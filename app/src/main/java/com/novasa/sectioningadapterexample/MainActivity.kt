@@ -20,6 +20,8 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "SectioningAdapter"
 
+        private const val COUNT = 10
+
         private const val VIEW_TYPE_ITEM = 1
         private const val VIEW_TYPE_HEADER = 2
         private const val VIEW_TYPE_GLOBAL_HEADER = 3
@@ -28,8 +30,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val items = ArrayList<Item>().also {
-        for (i in 1..20) {
+        for (i in 1..COUNT) {
             it.add(Item(i, i % 3 + 1))
+        }
+    }
+
+    private val items2 = ArrayList<Item>().also {
+        for (i in COUNT..COUNT+5) {
+            it.add(Item(i, 4))
         }
     }
 
@@ -49,18 +57,18 @@ class MainActivity : AppCompatActivity() {
         sectioningAdapter.setItems(items)
 
         sectioningAdapter.insertGlobalHeader(0, VIEW_TYPE_GLOBAL_HEADER)
-        sectioningAdapter.insertGlobalFooter(0, VIEW_TYPE_GLOBAL_HEADER)
+        sectioningAdapter.insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
 
         buttonShuffle.setOnClickListener {
             shuffle()
         }
 
         buttonAdd.setOnClickListener {
-            sectioningAdapter.insertGlobalHeader(sectioningAdapter.globalHeaderCount, VIEW_TYPE_GLOBAL_HEADER)
+            sectioningAdapter.setItems(items + items2)
         }
 
         buttonRemove.setOnClickListener {
-            sectioningAdapter.removeGlobalHeader(0)
+            sectioningAdapter.setItems(items)
         }
     }
 
@@ -132,26 +140,44 @@ class MainActivity : AppCompatActivity() {
 
         override fun compareItems(item1: Item, item2: Item): Int = item1.id.compareTo(item2.id)
 
-        class GlobalHeaderViewHolder(view: View) : SectioningAdapter.ViewHolder(view) {
+        inner class GlobalHeaderViewHolder(view: View) : SectioningAdapter.ViewHolder(view) {
             init {
                 with(itemView) {
                     itemHeader.text = "Global Header"
+                    setOnClickListener {
+                        expandAllSections()
+                    }
                 }
             }
         }
-        class GlobalFooterViewHolder(view: View) : SectioningAdapter.ViewHolder(view) {
+        inner class GlobalFooterViewHolder(view: View) : SectioningAdapter.ViewHolder(view) {
             init {
                 with(itemView) {
                     itemHeader.text = "Global Footer"
+                    setOnClickListener {
+                        collapseAllSections()
+                    }
                 }
             }
         }
 
         inner class HeaderViewHolder(view: View) : SectioningAdapter<Item, Int>.SectionItemViewHolder(view) {
 
+            init {
+                with(itemView) {
+                    setOnClickListener {
+                        requestFocus()
+                        getSectionKey()?.let {
+                            toggleExpandSection(it)
+                        }
+                    }
+                }
+            }
+
             override fun bind(adapterPosition: Int, sectionPosition: Int, sectionKey: Int) {
                 with(itemView) {
                     itemHeader.text = "Section $sectionKey"
+                    Log.d(TAG, "bind pos: $adapterPosition, $sectionPosition, key: $sectionKey")
                 }
             }
         }
