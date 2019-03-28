@@ -117,10 +117,12 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
             section.items.add(item)
         }
 
+        // Purge empty sections
         for (i in sections.size - 1 downTo 0) {
             val section = sections[i]
             if (section.itemCount == 0) {
                 sections.removeAt(i)
+                sectionsMap.remove(section.key)
             }
         }
 
