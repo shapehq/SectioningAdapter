@@ -25,6 +25,8 @@ class MainActivity : AppCompatActivity() {
         private const val VIEW_TYPE_GLOBAL_HEADER = 3
         private const val VIEW_TYPE_GLOBAL_FOOTER = 4
         private const val VIEW_TYPE_NO_CONTENT = 5
+
+        private const val UPDATE_INCREMENT = "update_increment"
     }
 
     private val items = ArrayList<Item>().also {
@@ -95,7 +97,7 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, sb.toString())
     }
 
-    data class Item(val id: Int, var section: Int)
+    data class Item(var id: Int, var section: Int)
 
     class Adapter : SectioningAdapter<Item, Int>() {
 
@@ -157,9 +159,31 @@ class MainActivity : AppCompatActivity() {
         }
 
         inner class ItemViewHolder(view: View) : SectioningAdapter<Item, Int>.ItemViewHolder(view) {
+
+            init {
+                itemView.setOnClickListener {
+                    getItem()?.let {
+                        it.id++
+                        notifyItemChanged(it, UPDATE_INCREMENT)
+                    }
+                }
+            }
+
             override fun bind(adapterPosition: Int, sectionPosition: Int, sectionItemPosition: Int, sectionKey: Int, item: Item) {
                 with(itemView) {
                     itemTitle.text = "Item ${item.id}"
+                }
+            }
+
+            override fun partialBind(adapterPosition: Int, sectionPosition: Int, sectionItemPosition: Int, sectionKey: Int, item: Item, payloads: MutableList<Any>) {
+                with(itemView) {
+                    payloads.forEach {
+                        when (it) {
+                            UPDATE_INCREMENT -> {
+                                itemTitle.text = "Item ${item.id}"
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -57,9 +57,9 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         AsyncListDiffer<Wrapper<TItem>>(this, differItemCallback)
     }
 
-    open fun areItemsTheSame(oldItem: TItem, newItem: TItem) = oldItem == newItem
+    open fun areItemsTheSame(item1: TItem, item2: TItem) = item1 == item2
 
-    open fun areContentsTheSame(oldItem: TItem, newItem: TItem): Boolean = true
+    open fun areContentsTheSame(item1: TItem, item2: TItem): Boolean = true
 
     // endregion
 
@@ -170,7 +170,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
                 noContentVisible = false
 
-            } else {
+            } else if (showNoContent()) {
                 add(Wrapper(NoContent))
                 noContentVisible = true
             }
@@ -189,6 +189,27 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         }
         for (i in p0 + size - 1 downTo p0) {
             content.removeAt(i)
+        }
+    }
+
+    fun findAdapterPositionForItem(item: TItem): Int {
+        if (::sections.isInitialized) {
+            sections.forEach { section ->
+                section.items.forEachIndexed { index, sItem ->
+                    if (areItemsTheSame(item, sItem)) {
+                        return section.adapterPosition + section.headerCount + index
+                    }
+                }
+            }
+        }
+
+        return -1
+    }
+
+    fun notifyItemChanged(item: TItem, payload: Any?) {
+        val pos = findAdapterPositionForItem(item)
+        if (pos >= 0) {
+            notifyItemChanged(pos, payload)
         }
     }
 
@@ -443,7 +464,8 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
         sectionsSize -= section.size
         if (sectionsSize == 0 && showNoContent()) {
-
+            content.add(globalHeaderCount, Wrapper(NoContent))
+            noContentVisible = true
         }
 
         submitUpdate()
