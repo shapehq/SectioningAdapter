@@ -15,12 +15,13 @@ import java.util.ArrayList
 import kotlin.Comparator
 import kotlin.random.Random
 
-class MainActivity : AppCompatActivity() {
+class ExampleActivityKotlin : AppCompatActivity() {
 
     companion object {
         private const val TAG = "SectioningAdapter"
 
-        private const val COUNT = 10
+        private const val ITEM_COUNT = 10
+        private const val SECTION_COUNT = 5
 
         private const val VIEW_TYPE_ITEM = 1
         private const val VIEW_TYPE_HEADER = 2
@@ -32,13 +33,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val items = ArrayList<Item>().also {
-        for (i in 1..COUNT) {
-            it.add(Item(i, i % 3 + 1))
+        for (i in 1..ITEM_COUNT) {
+            it.add(Item(i, i % SECTION_COUNT + 1))
         }
     }
 
     private val items2 = ArrayList<Item>().also {
-        for (i in COUNT..COUNT+5) {
+        for (i in ITEM_COUNT..ITEM_COUNT + 5) {
             it.add(Item(i, 4))
         }
     }
@@ -70,17 +71,24 @@ class MainActivity : AppCompatActivity() {
         }
 
         buttonRemove.setOnClickListener {
-            sectioningAdapter.setItems(items)
+            val item = sectioningAdapter.getItemIf { item, _, _ ->
+                item.section == 2
+            }
+
+            Log.d(TAG, "Found: $item")
         }
     }
 
     private fun shuffle() {
         items.forEach {
-            it.section = Random.nextInt(1, 4)
+            it.section = Random.nextInt(1, SECTION_COUNT + 1)
         }
 
         sectioningAdapter.setItems(items)
 
+        val allItems = sectioningAdapter.getAllItems()
+
+        assert(allItems.size == items.size)
 
         val sorted: List<Item> = items.sortedWith(Comparator { o1, o2 ->
             when {
@@ -94,14 +102,16 @@ class MainActivity : AppCompatActivity() {
 
         val sb = StringBuilder()
         var sec = -1
-        sorted.forEach { item ->
+        sorted.forEachIndexed { index, item ->
             if (sec < item.section) {
                 sec = item.section
                 sb.append("\nSECTION $sec")
             }
-            sb.append("\n- Item ${item.id}")
-        }
+            sb.append("\n- Item $item, from adapter: ${allItems[index]}")
 
+            assert(item.id == allItems[index].id)
+        }
+        
         Log.d(TAG, sb.toString())
     }
 
@@ -140,7 +150,7 @@ class MainActivity : AppCompatActivity() {
 
         override fun compareSectionKeys(key1: Int, key2: Int): Int = key1.compareTo(key2)
 
-        override fun compareItems(item1: Item, item2: Item): Int = item1.id.compareTo(item2.id)
+        override fun compareItems(sectionKey: Int, item1: Item, item2: Item): Int = item1.id.compareTo(item2.id)
 
         inner class GlobalHeaderViewHolder(view: View) : SectioningAdapter.ViewHolder(view) {
             init {
@@ -152,6 +162,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
         inner class GlobalFooterViewHolder(view: View) : SectioningAdapter.ViewHolder(view) {
             init {
                 with(itemView) {

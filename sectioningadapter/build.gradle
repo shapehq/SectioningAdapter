@@ -4,8 +4,8 @@ apply plugin: 'kotlin-android'
 apply plugin: 'com.jfrog.bintray'
 apply plugin: 'com.github.dcendents.android-maven'
 
-def vCode = 3
-def vName = '0.3'
+def vCode = 4
+def vName = '0.4'
 
 ext {
     bintrayRepo = 'Novasa'
@@ -52,11 +52,9 @@ android {
 }
 
 dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
-
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.recyclerview:recyclerview:1.1.0-alpha03'
-
 }
 repositories {
     mavenCentral()
