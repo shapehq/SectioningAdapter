@@ -1,14 +1,12 @@
 package com.novasa.sectioningadapter
 
-import android.os.Handler
 import android.view.View
 import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 
 @Suppress("MemberVisibilityCanBePrivate", "unused")
-abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
-    RecyclerView.Adapter<SectioningAdapter.ViewHolder>() {
+abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.Adapter<SectioningAdapter.ViewHolder>() {
 
     object GlobalSectionKey
 
@@ -57,7 +55,11 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
     }
 
     private val differ: AsyncListDiffer<Wrapper<TItem>> by lazy {
-        AsyncListDiffer<Wrapper<TItem>>(this, differItemCallback)
+        AsyncListDiffer<Wrapper<TItem>>(this, differItemCallback).apply {
+            addListListener { _, _ ->
+                onContentChanged()
+            }
+        }
     }
 
     open fun areItemsTheSame(item1: TItem, item2: TItem) = item1 == item2
@@ -67,7 +69,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
     // endregion
 
 
-    // region Init
+    // region Content
 
     private val content = ArrayList<Wrapper<TItem>>()
     private val globalHeaders = ArrayList<HeaderFooter>()
@@ -76,27 +78,14 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
     private val sections = ArrayList<Section>()
     private val sectionsMap = HashMap<TSectionKey, Section>()
 
-    init {
-        Handler().post {
-            if (sections.isEmpty() && showNoContent() && !noContentVisible) {
-                content.add(globalHeaderCount, Wrapper(NoContent))
-                noContentVisible = true
-                submitUpdate()
-            }
-        }
-    }
-
-    // endregion
-
-
-    // region Content
-
     /**
      * The main update function of the adapter. When this is called, the items will be sorted into sections, according to the result of [getSectionKeyForItem].
-     * @param items
+     *
+     * The adapter then uses an [AsyncListDiffer] to apply adapter updates. To receive a callback when the diff has finished, override [onContentChanged].
+     * @param items The items that the adapter should display.
+     * @see [AsyncListDiffer]
      */
     fun setItems(items: List<TItem>) {
-
         sections.forEach { section ->
             section.items.clear()
         }
@@ -156,6 +145,11 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
 
         refreshContent()
     }
+
+    /**
+     * Called when the asynchrounous diff has finished, and the adapter notifications have been applied.
+     */
+    open fun onContentChanged() {}
 
     /**
      * Get the item at a given adapter position.
@@ -311,6 +305,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
 
         for (i in 0 until size) {
             content.removeAt(p0)
+
         }
     }
 
@@ -679,6 +674,8 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
 
         val size
             get() = (if (collapsed) 0 else itemCount) + headerCount + footerCount
+
+        override fun toString(): String = "Index: $index, position: $adapterPosition, itemCount: $itemCount, size: $size, collapsed: $collapsed"
     }
 
     // endregion

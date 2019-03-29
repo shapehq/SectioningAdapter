@@ -57,26 +57,26 @@ class ExampleActivityKotlin : AppCompatActivity() {
             adapter = sectioningAdapter
         }
 
-        sectioningAdapter.setItems(items)
-
         sectioningAdapter.insertGlobalHeader(0, VIEW_TYPE_GLOBAL_HEADER)
         sectioningAdapter.insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
+
+        sectioningAdapter.setItems(emptyList())
 
         buttonShuffle.setOnClickListener {
             shuffle()
         }
 
         buttonAdd.setOnClickListener {
-            sectioningAdapter.setItems(items + items2)
+            addItems()
         }
 
         buttonRemove.setOnClickListener {
-            val item = sectioningAdapter.getItemIf { item, _, _ ->
-                item.section == 2
-            }
-
-            Log.d(TAG, "Found: $item")
+            sectioningAdapter.removeAllSections()
         }
+    }
+
+    private fun addItems() {
+        sectioningAdapter.setItems(items)
     }
 
     private fun shuffle() {
@@ -130,6 +130,10 @@ class ExampleActivityKotlin : AppCompatActivity() {
                 VIEW_TYPE_NO_CONTENT -> ViewHolder(inflater.inflate(R.layout.cell_no_content, parent, false))
                 else -> throw IllegalArgumentException()
             }
+        }
+
+        override fun onContentChanged() {
+            super.onContentChanged()
         }
 
         override fun showNoContent(): Boolean = true
