@@ -1,9 +1,11 @@
 package com.novasa.sectioningadapter
 
 import android.view.View
+import android.view.View.Z
 import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
+import kotlin.text.Typography.section
 
 @Suppress("MemberVisibilityCanBePrivate", "unused")
 abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.Adapter<SectioningAdapter.ViewHolder>() {
@@ -97,57 +99,28 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         items.forEach { item ->
             val key = getSectionKeyForItem(item)
             val section = sectionsMap.getOrPut(key) {
-                Section(key).apply {
-                    headerCount = getHeaderCountForSectionKey(key)
-                    require(headerCount >= 0) {
-                        "Section header count must be >= 0"
-                    }
-
-                    footerCount = getFooterCountForSectionKey(key)
-                    require(footerCount >= 0) {
-                        "Section footer count must be >= 0"
-                    }
-
-                    sections.add(this)
-                }
+                createSection(key)
             }
 
             section.items.add(item)
         }
 
-        // Purge empty sections
-        for (i in sections.size - 1 downTo 0) {
-            val section = sections[i]
-            if (section.itemCount == 0) {
-                sections.removeAt(i)
-                sectionsMap.remove(section.key)
-            }
+        updateSections()
+    }
+
+    fun removeItems(items: List<TItem>) {
+
+    }
+
+    fun removeAllItems() {
+        sections.forEach { section ->
+            section.items.clear()
         }
-
-        if (sortSections()) {
-            sections.sortWith(sectionComparator)
-        }
-
-        var p0 = globalHeaderCount
-
-        sections.forEachIndexed { index, section ->
-            if (sortItemsInSection(section.key)) {
-                section.items.sortWith(itemComparator(section.key))
-            }
-
-            section.index = index
-            section.adapterPosition = p0
-
-            p0 += section.size
-        }
-
-        sectionsSize = p0 - globalHeaderCount
-
-        refreshContent()
+        updateSections()
     }
 
     /**
-     * Called when the asynchrounous diff has finished, and the adapter notifications have been applied.
+     * Called when the asynchronous diff has finished, and the adapter notifications have been applied.
      */
     open fun onContentChanged() {}
 
@@ -162,7 +135,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     }
 
     /**
-     * Iterate over all items currently displayed in the adapter
+     * Iterate over all items currently in the adapter
      *
      * @param action Lambda function supplying the item, its associated section key, and its current adapter position.
      *
@@ -252,6 +225,50 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         if (pos >= 0) {
             notifyItemChanged(pos, payload)
         }
+    }
+
+    private fun updateSections() {
+        // Purge empty sections
+        for (i in sections.size - 1 downTo 0) {
+            val section = sections[i]
+            if (section.itemCount == 0 && !section.static) {
+                sections.removeAt(i)
+                sectionsMap.remove(section.key)
+            }
+        }
+
+        if (sortSections()) {
+            sections.sortWith(sectionComparator)
+        }
+
+        var p0 = globalHeaderCount
+
+        sections.forEachIndexed { i, section ->
+            with (section) {
+                headerCount = getHeaderCountForSectionKey(key)
+                require(headerCount >= 0) {
+                    "Section header count must be >= 0"
+                }
+
+                footerCount = getFooterCountForSectionKey(key)
+                require(footerCount >= 0) {
+                    "Section footer count must be >= 0"
+                }
+
+                if (sortItemsInSection(key)) {
+                    items.sortWith(itemComparator(key))
+                }
+
+                index = i
+                adapterPosition = p0
+
+                p0 += size
+            }
+        }
+
+        sectionsSize = p0 - globalHeaderCount
+
+        refreshContent()
     }
 
     private fun refreshContent() {
@@ -428,6 +445,60 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         throw NotImplementedError("Must override compareItems() if sortItemsInSection() returns true")
 
     /**
+     * Add a static section. Static sections remain even if they have no items.
+     *
+     * If the the section key is already associated with a section in the adapter, that section will become static.
+     */
+    fun addStaticSection(sectionKey: TSectionKey) {
+        sectionsMap.getOrPut(sectionKey) {
+            createSection(sectionKey)
+
+        }.apply {
+            static = true
+        }
+
+        updateSections()
+    }
+
+    /**
+     * @see [addStaticSection]
+     */
+    fun addStaticSections(sectionKeys: Collection<TSectionKey>) {
+        sectionKeys.forEach { key ->
+            sectionsMap.getOrPut(key) {
+                createSection(key)
+
+            }.apply {
+                static = true
+            }
+        }
+        updateSections()
+    }
+
+    /**
+     * Remove a static section.
+     *
+     * This only removes the static flag from the section. If the section contains items, it will remain in the adapter.
+     * @see [removeSection]
+     * @see [removeItemsInSection]
+     */
+    fun removeStaticSection(sectionKey: TSectionKey) {
+        sectionsMap[sectionKey]?.static = false
+        updateSections()
+    }
+
+    /**
+     * @see [removeStaticSection]
+     */
+    fun removeStaticSections(sectionKeys: Collection<TSectionKey>) {
+        sectionKeys.forEach { key ->
+            sectionsMap[key]?.static = false
+        }
+        updateSections()
+    }
+
+
+    /**
      * Removes all sections (and items) from the adapter.
      */
     fun removeAllSections() {
@@ -450,10 +521,23 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
     /**
      * Removes the section associated with the given section key, and all items associated with it.
+     *
+     * This will remove the section even if it is static.
+     *
+     * To remove the items in a section without removing the section, use [removeItemsInSection].
      */
     fun removeSection(key: TSectionKey) {
         sectionsMap[key]?.let { section ->
             removeSection(section)
+        }
+    }
+
+    /**
+     * Similar to [removeSection], but does not remove the section if it is static.
+     */
+    fun removeItemsInSection(key: TSectionKey) {
+        sectionsMap[key]?.let { section ->
+            removeItemsInSection(section)
         }
     }
 
@@ -474,6 +558,11 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     fun getAllSectionKeys(): List<TSectionKey> = sections.map { section ->
         section.key
     }
+
+    /**
+     * Get the current index of the supplied section key, or -1 if the section is not in the adapter.
+     */
+    fun getSectionIndex(sectionKey: TSectionKey): Int = sectionsMap[sectionKey]?.index ?: -1
 
     /**
      * Collapse the section associated with the given section key.
@@ -547,6 +636,10 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         }
     }
 
+    private fun createSection(key: TSectionKey): Section = Section(key).apply {
+        sections.add(this)
+    }
+
     private fun getSectionForKey(key: TSectionKey): Section {
         return sectionsMap.getOrElse(key) {
             throw IllegalArgumentException("No section found for section key: $key")
@@ -568,21 +661,37 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
     private fun removeSection(section: Section) {
 
-        removeContentRange(section.adapterPosition, section.size)
+        val size = section.size
+        removeContentRange(section.adapterPosition, size)
 
         sections.removeAt(section.index)
         sectionsMap.remove(section.key)
 
-        offsetSectionPositions(-section.size, section.index)
+        offsetSectionPositions(-size, section.index)
         offsetSectionIndices(-1, section.index)
 
-        sectionsSize -= section.size
+        sectionsSize -= size
         if (sectionsSize == 0 && showNoContent()) {
             content.add(globalHeaderCount, Wrapper(NoContent))
             noContentVisible = true
         }
 
         submitUpdate()
+    }
+
+    private fun removeItemsInSection(section: Section) {
+        if (!section.static) {
+            removeSection(section)
+
+        } else {
+            val size = section.itemCount
+            removeContentRange(section.adapterPosition + section.headerCount, size)
+
+            offsetSectionPositions(-size, section.index)
+            sectionsSize -= size
+
+            submitUpdate()
+        }
     }
 
     private fun collapseSection(section: Section): Boolean {
@@ -647,6 +756,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         var index = -1
         var adapterPosition = -1
 
+        var static = false
         var collapsed = false
 
         val itemCount

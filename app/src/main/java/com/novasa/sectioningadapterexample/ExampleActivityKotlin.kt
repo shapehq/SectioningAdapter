@@ -60,7 +60,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
         sectioningAdapter.insertGlobalHeader(0, VIEW_TYPE_GLOBAL_HEADER)
         sectioningAdapter.insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
 
-        sectioningAdapter.setItems(emptyList())
+        sectioningAdapter.addStaticSections(listOf(1, 2, 3, 4, 5))
 
         buttonShuffle.setOnClickListener {
             shuffle()
@@ -71,7 +71,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
         }
 
         buttonRemove.setOnClickListener {
-            sectioningAdapter.removeAllSections()
+            sectioningAdapter.removeAllItems()
         }
     }
 
@@ -150,7 +150,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
         override fun sortSections(): Boolean = true
 
-        override fun sortItemsInSection(key: Int): Boolean = true
+        override fun sortItemsInSection(sectionKey: Int): Boolean = true
 
         override fun compareSectionKeys(key1: Int, key2: Int): Int = key1.compareTo(key2)
 
