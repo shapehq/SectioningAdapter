@@ -11,6 +11,7 @@ import com.novasa.sectioningadapter.SectioningAdapter
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.cell_header.view.*
 import kotlinx.android.synthetic.main.cell_item.view.*
+import kotlinx.android.synthetic.main.cell_no_content.view.*
 import java.util.ArrayList
 import kotlin.Comparator
 import kotlin.random.Random
@@ -24,23 +25,25 @@ class ExampleActivityKotlin : AppCompatActivity() {
         private const val SECTION_COUNT = 5
 
         private const val VIEW_TYPE_ITEM = 1
-        private const val VIEW_TYPE_HEADER = 2
-        private const val VIEW_TYPE_GLOBAL_HEADER = 3
-        private const val VIEW_TYPE_GLOBAL_FOOTER = 4
-        private const val VIEW_TYPE_NO_CONTENT = 5
+        private const val VIEW_TYPE_SECTION_HEADER = 2
+        private const val VIEW_TYPE_SECTION_FOOTER = 3
+        private const val VIEW_TYPE_SECTION_NO_CONTENT = 4
+        private const val VIEW_TYPE_GLOBAL_HEADER = 5
+        private const val VIEW_TYPE_GLOBAL_FOOTER = 6
+        private const val VIEW_TYPE_GLOBAL_NO_CONTENT = 7
 
         private const val UPDATE_INCREMENT = "update_increment"
     }
 
     private val items = ArrayList<Item>().also {
         for (i in 1..ITEM_COUNT) {
-            it.add(Item(i, i % SECTION_COUNT + 1))
+            it.add(Item(i, Random.nextInt(SECTION_COUNT) + 1))
         }
     }
 
     private val items2 = ArrayList<Item>().also {
-        for (i in ITEM_COUNT..ITEM_COUNT + 5) {
-            it.add(Item(i, 4))
+        for (i in ITEM_COUNT + 1..ITEM_COUNT + 5) {
+            it.add(Item(i, Random.nextInt(SECTION_COUNT) + 1))
         }
     }
 
@@ -61,6 +64,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
         sectioningAdapter.insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
 
         sectioningAdapter.addStaticSections(listOf(1, 2, 3, 4, 5))
+        sectioningAdapter.setItems(items)
 
         buttonShuffle.setOnClickListener {
             shuffle()
@@ -71,17 +75,17 @@ class ExampleActivityKotlin : AppCompatActivity() {
         }
 
         buttonRemove.setOnClickListener {
-            sectioningAdapter.removeAllItems()
+            sectioningAdapter.removeItems(items.subList(0, ITEM_COUNT / 2))
         }
     }
 
     private fun addItems() {
-        sectioningAdapter.setItems(items)
+        sectioningAdapter.addItems(items2)
     }
 
     private fun shuffle() {
         items.forEach {
-            it.section = Random.nextInt(1, SECTION_COUNT + 1)
+            it.section = Random.nextInt(SECTION_COUNT) + 1
         }
 
         sectioningAdapter.setItems(items)
@@ -119,15 +123,21 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
     class Adapter : SectioningAdapter<Item, Int>() {
 
+        init {
+            collapseNewSections = false
+        }
+
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             val inflater = LayoutInflater.from(parent.context)
 
             return when (viewType) {
                 VIEW_TYPE_GLOBAL_HEADER -> GlobalHeaderViewHolder(inflater.inflate(R.layout.cell_header, parent, false))
-                VIEW_TYPE_GLOBAL_FOOTER -> GlobalFooterViewHolder(inflater.inflate(R.layout.cell_header, parent, false))
-                VIEW_TYPE_HEADER -> HeaderViewHolder(inflater.inflate(R.layout.cell_header, parent, false))
+                VIEW_TYPE_GLOBAL_FOOTER -> GlobalFooterViewHolder(inflater.inflate(R.layout.cell_footer, parent, false))
+                VIEW_TYPE_SECTION_HEADER -> SectionHeaderViewHolder(inflater.inflate(R.layout.cell_header, parent, false))
+                VIEW_TYPE_SECTION_FOOTER -> SectionFooterViewHolder(inflater.inflate(R.layout.cell_footer, parent, false))
+                VIEW_TYPE_SECTION_NO_CONTENT -> SectionNoContentViewHolder(inflater.inflate(R.layout.cell_no_content, parent, false))
                 VIEW_TYPE_ITEM -> ItemViewHolder(inflater.inflate(R.layout.cell_item, parent, false))
-                VIEW_TYPE_NO_CONTENT -> ViewHolder(inflater.inflate(R.layout.cell_no_content, parent, false))
+                VIEW_TYPE_GLOBAL_NO_CONTENT -> ViewHolder(inflater.inflate(R.layout.cell_no_content, parent, false))
                 else -> throw IllegalArgumentException()
             }
         }
@@ -136,17 +146,21 @@ class ExampleActivityKotlin : AppCompatActivity() {
             super.onContentChanged()
         }
 
-        override fun showNoContent(): Boolean = true
+        override fun showGlobalNoContent(): Boolean = true
 
-        override fun getNoContentViewType(): Int = VIEW_TYPE_NO_CONTENT
+        override fun getGlobalNoContentViewType(): Int = VIEW_TYPE_GLOBAL_NO_CONTENT
 
         override fun getSectionKeyForItem(item: Item): Int = item.section
 
-        override fun getHeaderCountForSectionKey(key: Int): Int = 1
+        override fun getHeaderCountForSectionKey(sectionKey: Int): Int = 1
 
-        override fun getItemViewTypeForSection(key: Int, adapterPosition: Int): Int = VIEW_TYPE_ITEM
+        override fun getItemViewTypeForSection(sectionKey: Int, adapterPosition: Int): Int = VIEW_TYPE_ITEM
 
-        override fun getHeaderViewTypeForSection(key: Int, headerIndex: Int): Int = VIEW_TYPE_HEADER
+        override fun getHeaderViewTypeForSection(sectionKey: Int, headerIndex: Int): Int = VIEW_TYPE_SECTION_HEADER
+
+        override fun showNoContentForStaticSection(sectionKey: Int): Boolean = true
+
+        override fun getNoContentViewTypeForStaticSection(sectionKey: Int): Int = VIEW_TYPE_SECTION_NO_CONTENT
 
         override fun sortSections(): Boolean = true
 
@@ -161,7 +175,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
                 with(itemView) {
                     itemHeader.text = "Global Header"
                     setOnClickListener {
-                        expandAllSections()
+                        toggleExpandAllSections()
                     }
                 }
             }
@@ -178,7 +192,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
             }
         }
 
-        inner class HeaderViewHolder(view: View) : SectioningAdapter<Item, Int>.SectionItemViewHolder(view) {
+        inner class SectionHeaderViewHolder(view: View) : SectioningAdapter<Item, Int>.SectionViewHolder(view) {
 
             init {
                 with(itemView) {
@@ -194,7 +208,24 @@ class ExampleActivityKotlin : AppCompatActivity() {
             override fun bind(adapterPosition: Int, sectionPosition: Int, sectionKey: Int) {
                 with(itemView) {
                     itemHeader.text = "Section $sectionKey"
-                    Log.d(TAG, "bind pos: $adapterPosition, $sectionPosition, key: $sectionKey")
+                }
+            }
+        }
+
+        inner class SectionFooterViewHolder(view: View) : SectioningAdapter<Item, Int>.SectionViewHolder(view) {
+
+            override fun bind(adapterPosition: Int, sectionPosition: Int, sectionKey: Int) {
+                with(itemView) {
+                    itemHeader.text = "Total item count: ${getItemCountForSection(sectionKey)}"
+                }
+            }
+        }
+
+        inner class SectionNoContentViewHolder(view: View) : SectioningAdapter<Item, Int>.SectionViewHolder(view) {
+
+            override fun bind(adapterPosition: Int, sectionPosition: Int, sectionKey: Int) {
+                with (itemView) {
+                    noContent.text = "Section $sectionKey is empty"
                 }
             }
         }

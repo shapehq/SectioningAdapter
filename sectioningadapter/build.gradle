@@ -4,8 +4,8 @@ apply plugin: 'kotlin-android'
 apply plugin: 'com.jfrog.bintray'
 apply plugin: 'com.github.dcendents.android-maven'
 
-def vCode = 6
-def vName = '0.1.6'
+def vCode = 8
+def vName = '1.0'
 
 ext {
     bintrayRepo = 'Novasa'
@@ -38,9 +38,6 @@ android {
         targetSdkVersion 28
         versionCode vCode
         versionName vName
-
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
-
     }
 
     buildTypes {
@@ -52,15 +49,19 @@ android {
 }
 
 dependencies {
-    implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.recyclerview:recyclerview:1.1.0-alpha03'
 }
+
 repositories {
     mavenCentral()
 }
 
 if (project.rootProject.file('local.properties').exists()) {
+    // local.properties is not committed
+    // Format: (no brackets)
+    // bintray.user=[USERNAME]
+    // bintray.apikey=[API KEY]
     apply from: 'https://raw.githubusercontent.com/nuuneoi/JCenter/master/installv1.gradle'
     apply from: 'https://raw.githubusercontent.com/nuuneoi/JCenter/master/bintrayv1.gradle'
 }
