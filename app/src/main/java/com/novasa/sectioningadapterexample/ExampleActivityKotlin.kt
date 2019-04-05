@@ -115,7 +115,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
             assert(item.id == allItems[index].id)
         }
-        
+
         Log.d(TAG, sb.toString())
     }
 
@@ -154,9 +154,13 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
         override fun getHeaderCountForSectionKey(sectionKey: Int): Int = 1
 
+        override fun getFooterCountForSectionKey(sectionKey: Int): Int = 1
+
         override fun getItemViewTypeForSection(sectionKey: Int, adapterPosition: Int): Int = VIEW_TYPE_ITEM
 
         override fun getHeaderViewTypeForSection(sectionKey: Int, headerIndex: Int): Int = VIEW_TYPE_SECTION_HEADER
+
+        override fun getFooterViewTypeForSection(sectionKey: Int, footerIndex: Int): Int = VIEW_TYPE_SECTION_FOOTER
 
         override fun showNoContentForStaticSection(sectionKey: Int): Boolean = true
 
@@ -224,7 +228,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
         inner class SectionNoContentViewHolder(view: View) : SectioningAdapter<Item, Int>.SectionViewHolder(view) {
 
             override fun bind(adapterPosition: Int, sectionPosition: Int, sectionKey: Int) {
-                with (itemView) {
+                with(itemView) {
                     noContent.text = "Section $sectionKey is empty"
                 }
             }

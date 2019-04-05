@@ -326,7 +326,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
                         }
 
                         if (!collapsed) {
-                            if (isEmpty && emptyContentSize > 0) {
+                            if (isEmpty && emptyContentCount > 0) {
                                 for (item in emptyContent) {
                                     add(Wrapper(item))
                                 }
@@ -804,24 +804,28 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
             removeSection(section)
 
         } else {
-            val size = section.itemCount + section.emptyContentSize
-            removeContentRange(section.adapterPosition + section.headerCount, size)
+            if (!section.isEmpty) {
+                val size = section.itemSize
+                removeContentRange(section.adapterPosition + section.headerCount, size)
+                offsetSectionPositions(-size, section.index)
+                globalSectionsSize -= size
 
-            offsetSectionPositions(-size, section.index)
-            globalSectionsSize -= size
+                section.items.clear()
 
-            submitUpdate()
+                submitUpdate()
+            }
         }
     }
 
     private fun collapseSection(section: Section) {
         if (!section.collapsed) {
-            section.collapsed = true
 
-            val size = section.itemCount + section.emptyContentSize
+            val size = section.itemSize + section.emptyContentSize
             removeContentRange(section.adapterPosition + section.headerCount, size)
             offsetSectionPositions(-size, section.index + 1)
             globalSectionsSize -= size
+
+            section.collapsed = true
 
             submitUpdate()
         }
@@ -840,7 +844,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
                 }
 
             } else {
-                size = section.emptyContentSize
+                size = section.emptyContentCount
                 for (i in 0 until size) {
                     content.add(i + p0, Wrapper(section.emptyContent[i]))
                 }
@@ -886,18 +890,26 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         var static = false
         var collapsed = false
 
-        val itemCount
-            get() = items.size
-
-        val isEmpty
-            get() = itemCount == 0
-
         val size
             get() = when {
                 collapsed -> 0
                 else -> itemCount + emptyContentSize
             } + headerCount + footerCount
 
+        val itemCount
+            get() = items.size
+
+        val isEmpty
+            get() = itemCount == 0
+
+        val itemSize
+            get() = if (collapsed) 0 else itemCount
+
+        val emptyContentCount
+            get() = if (isEmpty && ::emptyContent.isInitialized) emptyContent.size else 0
+
+        val emptyContentSize
+            get() = if (collapsed) 0 else emptyContentCount
 
         var headerCount: Int
             get() = headers.size
@@ -930,9 +942,6 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
                     }
                 }
             }
-
-        val emptyContentSize
-            get() = if (isEmpty && ::emptyContent.isInitialized) emptyContent.size else 0
 
         private fun insertEmptyContent(item: NonItem, index: Int) {
             if (!::emptyContent.isInitialized) {
@@ -1126,13 +1135,13 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
                 in 0 until headerCount -> headers[sectionPosition].viewType
 
                 // Section item
-                in headerCount until headerCount + itemCount -> getItemViewTypeForSection(key, position)
+                in headerCount until headerCount + itemSize -> getItemViewTypeForSection(key, position)
 
                 // Section empty content (only > 0 if itemCount == 0)
                 in headerCount until headerCount + emptyContentSize -> emptyContent[sectionPosition - headerCount].viewType
 
                 // Section footer
-                in headerCount + itemCount + emptyContentSize until size -> footers[sectionPosition - headerCount - itemCount - emptyContentSize].viewType
+                in headerCount + itemSize + emptyContentSize until size -> footers[sectionPosition - headerCount - itemSize - emptyContentSize].viewType
 
                 // Should never happen
                 else -> null
