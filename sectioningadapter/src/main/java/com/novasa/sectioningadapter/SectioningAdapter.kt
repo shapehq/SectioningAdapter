@@ -627,9 +627,11 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     }
 
     /**
-     * Returns the items associated with the given section key, in the order they are presented in the adapter.
+     * @return The items associated with the given section key, in the order they are presented in the adapter.
+     *
+     * If the section is not found, an empty list is returned.
      */
-    fun getItemsInSection(sectionKey: TSectionKey): List<TItem> = getSectionForKey(sectionKey).items
+    fun getItemsInSection(sectionKey: TSectionKey): List<TItem> = getSectionForKey(sectionKey)?.items ?: emptyList()
 
     /**
      * Find the key for the section associated with the given adapter position.
@@ -663,7 +665,9 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      * Has no effect if the section is already collapsed.
      * @see [expandSection]
      */
-    fun collapseSection(sectionKey: TSectionKey): Boolean = collapseSection(getSectionForKey(sectionKey))
+    fun collapseSection(sectionKey: TSectionKey) = getSectionForKey(sectionKey)?.let {
+        collapseSection(it)
+    }
 
     /**
      * Expand the section associated with the given section key.
@@ -673,19 +677,22 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      * This is the default state.
      * @see [collapseSection]
      */
-    fun expandSection(sectionKey: TSectionKey): Boolean = expandSection(getSectionForKey(sectionKey))
+    fun expandSection(sectionKey: TSectionKey) = getSectionForKey(sectionKey)?.let {
+        expandSection(it)
+    }
 
     /**
      * Expand a section if is collapsed, and vice versa.
      * @see [collapseSection]
      * @see [expandSection]
      */
-    fun toggleExpandSection(sectionKey: TSectionKey): Boolean {
-        val section = getSectionForKey(sectionKey)
-        return if (section.collapsed) {
-            expandSection(section)
-        } else {
-            !collapseSection(section)
+    fun toggleExpandSection(sectionKey: TSectionKey) {
+        getSectionForKey(sectionKey)?.let { section ->
+            if (section.collapsed) {
+                expandSection(section)
+            } else {
+                collapseSection(section)
+            }
         }
     }
 
@@ -759,23 +766,17 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         sections.add(this)
     }
 
-    private fun getSectionForKey(key: TSectionKey): Section {
-        return sectionsMap.getOrElse(key) {
-            throw IllegalArgumentException("No section found for section key: $key")
-        }
-    }
+    private fun getSectionForKey(key: TSectionKey): Section? = sectionsMap[key]
 
     private fun findSectionForAdapterPosition(position: Int): Section? {
-        require(position in globalHeaderCount until globalHeaderCount + globalSectionsSize) {
-            "Can't find section key. Invalid adapter position: $position"
-        }
-        for (section in sections) {
-            if (position < section.adapterPosition + section.size) {
-                return section
+        if (position >= globalHeaderCount) {
+            for (section in sections) {
+                if (position < section.adapterPosition + section.size) {
+                    return section
+                }
             }
         }
-
-        throw IllegalStateException()
+        return null
     }
 
     private fun removeSection(section: Section) {
@@ -813,7 +814,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         }
     }
 
-    private fun collapseSection(section: Section): Boolean {
+    private fun collapseSection(section: Section) {
         if (!section.collapsed) {
             section.collapsed = true
 
@@ -823,13 +824,10 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
             globalSectionsSize -= size
 
             submitUpdate()
-            return true
         }
-
-        return false
     }
 
-    private fun expandSection(section: Section): Boolean {
+    private fun expandSection(section: Section) {
         if (section.collapsed) {
             section.collapsed = false
 
@@ -852,10 +850,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
             globalSectionsSize += size
 
             submitUpdate()
-            return true
         }
-
-        return false
     }
 
     private fun offsetSectionPositions(offset: Int) {
@@ -1200,19 +1195,21 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     abstract inner class ItemViewHolder(itemView: View) : SectionViewHolder(itemView) {
 
         final override fun bind(adapterPosition: Int, sectionPosition: Int, sectionKey: TSectionKey) {
-            val section = getSectionForKey(sectionKey)
-            val sectionItemPosition = sectionPosition - section.headerCount
-            val item = section.items[sectionItemPosition]
-            bind(adapterPosition, sectionPosition, sectionItemPosition, sectionKey, item)
+            getSectionForKey(sectionKey)?.let { section ->
+                val sectionItemPosition = sectionPosition - section.headerCount
+                val item = section.items[sectionItemPosition]
+                bind(adapterPosition, sectionPosition, sectionItemPosition, sectionKey, item)
+            }
         }
 
         abstract fun bind(adapterPosition: Int, sectionPosition: Int, sectionItemPosition: Int, sectionKey: TSectionKey, item: TItem)
 
         final override fun partialBind(adapterPosition: Int, sectionPosition: Int, sectionKey: TSectionKey, payloads: MutableList<Any>) {
-            val section = getSectionForKey(sectionKey)
-            val sectionItemPosition = sectionPosition - section.headerCount
-            val item = section.items[sectionItemPosition]
-            partialBind(adapterPosition, sectionPosition, sectionItemPosition, sectionKey, item, payloads)
+            getSectionForKey(sectionKey)?.let { section ->
+                val sectionItemPosition = sectionPosition - section.headerCount
+                val item = section.items[sectionItemPosition]
+                partialBind(adapterPosition, sectionPosition, sectionItemPosition, sectionKey, item, payloads)
+            }
         }
 
         open fun partialBind(adapterPosition: Int, sectionPosition: Int, sectionItemPosition: Int, sectionKey: TSectionKey, item: TItem, payloads: MutableList<Any>) {
