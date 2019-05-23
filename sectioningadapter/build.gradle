@@ -50,7 +50,7 @@ android {
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation 'androidx.recyclerview:recyclerview:1.1.0-alpha03'
+    implementation 'androidx.recyclerview:recyclerview:1.1.0-alpha05'
 }
 
 repositories {
@@ -59,6 +59,7 @@ repositories {
 
 if (project.rootProject.file('local.properties').exists()) {
     // local.properties is not committed
+    // go to bintray.com -> login -> edit profile -> API key
     // Format: (no brackets)
     // bintray.user=[USERNAME]
     // bintray.apikey=[API KEY]
