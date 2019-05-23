@@ -383,7 +383,8 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      *
      * This includes collapsed sections.
      */
-    val sectionCount = sections.size
+    val sectionCount
+        get() = sections.size
 
     /**
      * The current size of all the sections, including any section headers and footers.
