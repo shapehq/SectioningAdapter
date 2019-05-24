@@ -1,33 +1,47 @@
 package com.novasa.sectioningadapter
 
+import android.util.SparseArray
 import android.view.View
-import androidx.recyclerview.widget.AsyncListDiffer
-import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.*
 
 @Suppress("MemberVisibilityCanBePrivate", "unused")
 abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.Adapter<SectioningAdapter.ViewHolder>() {
 
     object GlobalSectionKey
 
-    // Diff
+    // region Diff
 
     private class Wrapper<TItem : Any> {
 
-        val item: TItem?
-        val nonItem: NonItem?
+        var item: TItem? = null
+        var nonItem: NonItem? = null
+
+        constructor()
 
         constructor(item: TItem) {
             this.item = item
-            this.nonItem = null
         }
 
         constructor(nonItem: NonItem) {
-            this.item = null
             this.nonItem = nonItem
         }
 
-        override fun toString(): String = "${item ?: nonItem}"
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
+
+            other as Wrapper<*>
+
+            return when {
+                item != other.item -> false
+                nonItem != other.nonItem -> false
+                else -> true
+            }
+        }
+
+        override fun hashCode(): Int = item?.hashCode() ?: nonItem?.hashCode() ?: 0
+
+        override fun toString(): String = "Wrapper: ${item ?: nonItem ?: "empty"}"
     }
 
     private interface NonItem {
@@ -38,28 +52,45 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     private val differItemCallback = object : DiffUtil.ItemCallback<Wrapper<TItem>>() {
 
         override fun areItemsTheSame(oldItem: Wrapper<TItem>, newItem: Wrapper<TItem>): Boolean {
-            return com.novasa.core.let(oldItem.item, newItem.item) { o, n ->
+            return let(oldItem.item, newItem.item) { o, n ->
                 areItemsTheSame(o, n)
 
-            } ?: com.novasa.core.let(oldItem.nonItem, newItem.nonItem) { o, n ->
+            } ?: let(oldItem.nonItem, newItem.nonItem) { o, n ->
                 o.isEqualTo(n)
 
             } ?: false
         }
 
         override fun areContentsTheSame(oldItem: Wrapper<TItem>, newItem: Wrapper<TItem>): Boolean {
-            return com.novasa.core.let(oldItem.item, newItem.item) { o, n ->
+            return let(oldItem.item, newItem.item) { o, n ->
                 areContentsTheSame(o, n)
 
             } ?: true
         }
     }
 
-    private val differ: AsyncListDiffer<Wrapper<TItem>> by lazy {
-        AsyncListDiffer<Wrapper<TItem>>(this, differItemCallback).apply {
-            addListListener { _, _ ->
-                onContentChanged()
-            }
+    private val listUpdateCallback = object : ListUpdateCallback {
+
+        override fun onInserted(position: Int, count: Int) {
+            notifyItemRangeInserted(position, count)
+        }
+
+        override fun onRemoved(position: Int, count: Int) {
+            notifyItemRangeRemoved(position, count)
+        }
+
+        override fun onMoved(fromPosition: Int, toPosition: Int) {
+            notifyItemMoved(fromPosition, toPosition)
+        }
+
+        override fun onChanged(position: Int, count: Int, payload: Any?) {
+            notifyItemRangeChanged(position, count, payload)
+        }
+    }
+
+    private val differ = AsyncListDiffer<Wrapper<TItem>>(listUpdateCallback, AsyncDifferConfig.Builder(differItemCallback).build()).apply {
+        addListListener { _, _ ->
+            onContentChanged()
         }
     }
 
@@ -88,7 +119,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      * @param items The items that the adapter should display.
      * @see [AsyncListDiffer]
      */
-    fun setItems(items: List<TItem>) {
+    fun setItems(items: Collection<TItem>) {
         for (section in sections) {
             section.items.clear()
         }
@@ -102,7 +133,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      * Similar to [setItems], but does not remove current items first.
      * @param items
      */
-    fun addItems(items: List<TItem>) {
+    fun addItems(items: Collection<TItem>) {
         for (item in items) {
             val key = getSectionKeyForItem(item)
             val section = sectionsMap.getOrPut(key) {
@@ -311,46 +342,65 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
     private fun refreshContent() {
         with(content) {
+
+            val reuseWrappers = SparseArray<Wrapper<TItem>>(size)
+
+            forEach { wrapper: Wrapper<TItem> ->
+                reuseWrappers.put(wrapper.hashCode(), wrapper)
+            }
+
+            fun getWrapper(hash: Int): Wrapper<TItem> = reuseWrappers.get(hash) ?: Wrapper()
+
+            fun getWrapper(item: TItem): Wrapper<TItem> = getWrapper(item.hashCode()).also {
+                it.item = item
+                it.nonItem = null
+            }
+
+            fun getWrapper(nonItem: NonItem): Wrapper<TItem> = getWrapper(nonItem.hashCode()).also {
+                it.item = null
+                it.nonItem = nonItem
+            }
+
             clear()
 
-            for (header in globalHeaders) {
-                add(Wrapper(header))
+            for (header: HeaderFooter in globalHeaders) {
+                add(getWrapper(header))
             }
 
             globalNoContentVisible = false
             if (globalSectionsSize > 0) {
-                for (section in sections) {
+                for (section: Section in sections) {
                     with(section) {
-                        for (footer in headers) {
-                            add(Wrapper(footer))
+                        for (footer: HeaderFooter in headers) {
+                            add(getWrapper(footer))
                         }
 
                         if (!collapsed) {
                             if (isEmpty && emptyContentCount > 0) {
-                                for (item in emptyContent) {
-                                    add(Wrapper(item))
+                                for (item: NonItem in emptyContent) {
+                                    add(getWrapper(item))
                                 }
 
                             } else {
-                                for (item in items) {
-                                    add(Wrapper(item))
+                                for (item: TItem in items) {
+                                    add(getWrapper(item))
                                 }
                             }
                         }
 
-                        for (footer in footers) {
-                            add(Wrapper(footer))
+                        for (footer: HeaderFooter in footers) {
+                            add(getWrapper(footer))
                         }
                     }
                 }
 
             } else if (showGlobalNoContent()) {
-                add(Wrapper(getGlobalNoContent()))
+                add(getWrapper(getGlobalNoContent()))
                 globalNoContentVisible = true
             }
 
-            for (footer in globalFooters) {
-                add(Wrapper(footer))
+            for (footer: HeaderFooter in globalFooters) {
+                add(getWrapper(footer))
             }
         }
 
@@ -652,7 +702,8 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      */
     fun getSectionIndex(sectionKey: TSectionKey): Int = sectionsMap[sectionKey]?.index ?: -1
 
-    /** Determines if newly added sections are collapsed when added.
+    /**
+     * Determines if newly added sections are collapsed when added.
      *
      * Default = false
      */
@@ -728,7 +779,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      * @see [expandAllSections]
      */
     fun toggleExpandAllSections(expandDefault: Boolean = true) {
-        if (!sections.isEmpty()) {
+        if (sections.isNotEmpty()) {
             var expand = sections.first().collapsed
             for (section in sections) {
                 if (section.collapsed != expand) {
@@ -957,7 +1008,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
             }
         }
 
-        override fun toString(): String = "Index: $index, position: $adapterPosition, itemCount: $itemCount, size: $size, collapsed: $collapsed"
+        override fun toString(): String = "Key: $key, Index: $index, position: $adapterPosition, itemCount: $itemCount, size: $size, collapsed: $collapsed"
     }
 
     // endregion
@@ -1128,9 +1179,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         else -> findSectionForAdapterPosition(position)?.run {
 
             // Local section position
-            val sectionPosition = position - adapterPosition
-
-            when (sectionPosition) {
+            when (val sectionPosition = position - adapterPosition) {
 
                 // Section headers
                 in 0 until headerCount -> headers[sectionPosition].viewType
@@ -1150,12 +1199,12 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         } ?: throw IllegalStateException("Tried to get view type for invalid adapter position")
     }
 
-    override fun onBindViewHolder(holder: SectioningAdapter.ViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         holder.bind(position)
     }
 
-    override fun onBindViewHolder(holder: SectioningAdapter.ViewHolder, position: Int, payloads: MutableList<Any>) {
-        if (!payloads.isEmpty()) {
+    override fun onBindViewHolder(holder: ViewHolder, position: Int, payloads: MutableList<Any>) {
+        if (payloads.isNotEmpty()) {
             holder.partialBind(position, payloads)
 
         } else {

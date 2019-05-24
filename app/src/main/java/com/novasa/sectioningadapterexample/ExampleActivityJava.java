@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.novasa.sectioningadapter.SectioningAdapter;
+import kotlin.Unit;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -48,11 +49,10 @@ public class ExampleActivityJava extends AppCompatActivity {
         recyclerView.setAdapter(mAdapter);
 
         mAdapter.setItems(mItems);
-
-        mAdapter.forEach((item, integer, integer2) -> null);
-
-
+        mAdapter.forEach((item, integer, integer2) -> Unit.INSTANCE);
     }
+
+    void stuff() {}
 
     class Item {
         int id;

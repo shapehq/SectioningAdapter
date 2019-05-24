@@ -35,15 +35,17 @@ class ExampleActivityKotlin : AppCompatActivity() {
         private const val UPDATE_INCREMENT = "update_increment"
     }
 
+    private val rng = Random(0)
+
     private val items = ArrayList<Item>().also {
         for (i in 1..ITEM_COUNT) {
-            it.add(Item(i, Random.nextInt(SECTION_COUNT) + 1))
+            it.add(Item(i, rng.nextInt(SECTION_COUNT) + 1))
         }
     }
 
     private val items2 = ArrayList<Item>().also {
         for (i in ITEM_COUNT + 1..ITEM_COUNT + 5) {
-            it.add(Item(i, Random.nextInt(SECTION_COUNT) + 1))
+            it.add(Item(i, rng.nextInt(SECTION_COUNT) + 1))
         }
     }
 
@@ -85,7 +87,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
     private fun shuffle() {
         items.forEach {
-            it.section = Random.nextInt(SECTION_COUNT) + 1
+            it.section = rng.nextInt(SECTION_COUNT) + 1
         }
 
         sectioningAdapter.setItems(items)
@@ -120,6 +122,16 @@ class ExampleActivityKotlin : AppCompatActivity() {
     }
 
     data class Item(var id: Int, var section: Int)
+
+    class Adapter1 : SectioningAdapter<Item, Int>() {
+        override fun getSectionKeyForItem(item: Item): Int {
+            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        }
+    }
 
     class Adapter : SectioningAdapter<Item, Int>() {
 
