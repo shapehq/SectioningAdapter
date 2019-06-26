@@ -1,5 +1,6 @@
 package com.novasa.sectioningadapterexample
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -16,6 +17,7 @@ import java.util.ArrayList
 import kotlin.Comparator
 import kotlin.random.Random
 
+@SuppressLint("SetTextI18n")
 class ExampleActivityKotlin : AppCompatActivity() {
 
     companion object {
@@ -72,17 +74,17 @@ class ExampleActivityKotlin : AppCompatActivity() {
             shuffle()
         }
 
+        buttonSet.setOnClickListener {
+            setItems()
+        }
+
         buttonAdd.setOnClickListener {
             addItems()
         }
 
         buttonRemove.setOnClickListener {
-            sectioningAdapter.removeItems(items.subList(0, ITEM_COUNT / 2))
+            removeItems()
         }
-    }
-
-    private fun addItems() {
-        sectioningAdapter.addItems(items2)
     }
 
     private fun shuffle() {
@@ -121,17 +123,26 @@ class ExampleActivityKotlin : AppCompatActivity() {
         Log.d(TAG, sb.toString())
     }
 
-    data class Item(var id: Int, var section: Int)
+    private fun setItems() {
+        val items = arrayListOf(
+            Item(101, 2),
+            Item(102, 2),
+            Item(103, 2),
+            Item(104, 1)
+        )
 
-    class Adapter1 : SectioningAdapter<Item, Int>() {
-        override fun getSectionKeyForItem(item: Item): Int {
-            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-        }
+        sectioningAdapter.setItemsInSection(2, items)
     }
+
+    private fun addItems() {
+        sectioningAdapter.addItems(items2)
+    }
+
+    private fun removeItems() {
+        sectioningAdapter.removeItems(items.subList(0, ITEM_COUNT / 2))
+    }
+
+    data class Item(var id: Int, var section: Int)
 
     class Adapter : SectioningAdapter<Item, Int>() {
 
@@ -139,7 +150,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
             collapseNewSections = false
         }
 
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BaseViewHolder {
             val inflater = LayoutInflater.from(parent.context)
 
             return when (viewType) {
@@ -149,13 +160,9 @@ class ExampleActivityKotlin : AppCompatActivity() {
                 VIEW_TYPE_SECTION_FOOTER -> SectionFooterViewHolder(inflater.inflate(R.layout.cell_footer, parent, false))
                 VIEW_TYPE_SECTION_NO_CONTENT -> SectionNoContentViewHolder(inflater.inflate(R.layout.cell_no_content, parent, false))
                 VIEW_TYPE_ITEM -> ItemViewHolder(inflater.inflate(R.layout.cell_item, parent, false))
-                VIEW_TYPE_GLOBAL_NO_CONTENT -> ViewHolder(inflater.inflate(R.layout.cell_no_content, parent, false))
+                VIEW_TYPE_GLOBAL_NO_CONTENT -> BaseViewHolder(inflater.inflate(R.layout.cell_no_content, parent, false))
                 else -> throw IllegalArgumentException()
             }
-        }
-
-        override fun onContentChanged() {
-            super.onContentChanged()
         }
 
         override fun showGlobalNoContent(): Boolean = true
@@ -186,7 +193,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
         override fun compareItems(sectionKey: Int, item1: Item, item2: Item): Int = item1.id.compareTo(item2.id)
 
-        inner class GlobalHeaderViewHolder(view: View) : SectioningAdapter.ViewHolder(view) {
+        inner class GlobalHeaderViewHolder(view: View) : BaseViewHolder(view) {
             init {
                 with(itemView) {
                     itemHeader.text = "Global Header"
@@ -197,7 +204,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
             }
         }
 
-        inner class GlobalFooterViewHolder(view: View) : SectioningAdapter.ViewHolder(view) {
+        inner class GlobalFooterViewHolder(view: View) : BaseViewHolder(view) {
             init {
                 with(itemView) {
                     itemHeader.text = "Global Footer"
@@ -208,7 +215,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
             }
         }
 
-        inner class SectionHeaderViewHolder(view: View) : SectioningAdapter<Item, Int>.SectionViewHolder(view) {
+        inner class SectionHeaderViewHolder(view: View) : SectionViewHolder(view) {
 
             init {
                 with(itemView) {
@@ -228,7 +235,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
             }
         }
 
-        inner class SectionFooterViewHolder(view: View) : SectioningAdapter<Item, Int>.SectionViewHolder(view) {
+        inner class SectionFooterViewHolder(view: View) : SectionViewHolder(view) {
 
             override fun bind(adapterPosition: Int, sectionPosition: Int, sectionKey: Int) {
                 with(itemView) {
@@ -237,7 +244,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
             }
         }
 
-        inner class SectionNoContentViewHolder(view: View) : SectioningAdapter<Item, Int>.SectionViewHolder(view) {
+        inner class SectionNoContentViewHolder(view: View) : SectionViewHolder(view) {
 
             override fun bind(adapterPosition: Int, sectionPosition: Int, sectionKey: Int) {
                 with(itemView) {
@@ -246,7 +253,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
             }
         }
 
-        inner class ItemViewHolder(view: View) : SectioningAdapter<Item, Int>.ItemViewHolder(view) {
+        inner class ItemViewHolder(view: View) : SectionItemViewHolder(view) {
 
             init {
                 itemView.setOnClickListener {

@@ -5,7 +5,7 @@ import android.view.View
 import androidx.recyclerview.widget.*
 
 @Suppress("MemberVisibilityCanBePrivate", "unused")
-abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.Adapter<SectioningAdapter.ViewHolder>() {
+abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.Adapter<SectioningAdapter.BaseViewHolder>() {
 
     object GlobalSectionKey
 
@@ -579,6 +579,54 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     fun isSectionEmpty(sectionKey: TSectionKey): Boolean = getItemCountForSection(sectionKey) <= 0
 
     /**
+     * Sets the items for a single section.
+     *
+     * If the section does not exist, it will be created.
+     *
+     * If the section is currently not empty, any items not in the provided list will be removed.
+     *
+     * If there are items in the provided list that belong to a different section, they will be ignored.
+     * @param sectionKey The section key.
+     * @param items The items to set in the section.
+     */
+    fun setItemsInSection(sectionKey: TSectionKey, items: List<TItem>) {
+        if (items.isEmpty()) {
+            removeItemsInSection(sectionKey)
+
+        } else {
+            sectionsMap[sectionKey]?.items?.clear()
+            addItemsInSection(sectionKey, items)
+        }
+    }
+
+    /**
+     * Add items in a single section.
+     *
+     * If there are items in the provided list that belong to a different section, they will be ignored.
+     * @param sectionKey
+     * @param items
+     */
+    fun addItemsInSection(sectionKey: TSectionKey, items: List<TItem>) {
+        if (items.isNotEmpty()) {
+            val section = sectionsMap.getOrPut(sectionKey) {
+                createSection(sectionKey)
+            }
+
+            with(section.items) {
+                clear()
+
+                items.forEach { item ->
+                    if (getSectionKeyForItem(item) == sectionKey) {
+                        add(item)
+                    }
+                }
+            }
+
+            updateSections()
+        }
+    }
+
+    /**
      * Add a static section. Static sections remain even if they have no items.
      *
      * If the the section key is already associated with a section in the adapter, that section will become static.
@@ -808,7 +856,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     }
 
     private fun itemComparator(key: TSectionKey): Comparator<TItem> = itemComparators.getOrPut(key) {
-        Comparator { o1, o2 ->
+        Comparator<TItem> { o1, o2 ->
             compareItems(key, o1, o2)
         }
     }
@@ -855,17 +903,15 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         if (!section.static) {
             removeSection(section)
 
-        } else {
-            if (!section.isEmpty) {
-                val size = section.itemSize
-                removeContentRange(section.adapterPosition + section.headerCount, size)
-                offsetSectionPositions(-size, section.index)
-                globalSectionsSize -= size
+        } else if (!section.isEmpty) {
+            val size = section.itemSize
+            removeContentRange(section.adapterPosition + section.headerCount, size)
+            offsetSectionPositions(-size, section.index)
+            globalSectionsSize -= size
 
-                section.items.clear()
+            section.items.clear()
 
-                submitUpdate()
-            }
+            submitUpdate()
         }
     }
 
@@ -1199,11 +1245,11 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         } ?: throw IllegalStateException("Tried to get view type for invalid adapter position")
     }
 
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: BaseViewHolder, position: Int) {
         holder.bind(position)
     }
 
-    override fun onBindViewHolder(holder: ViewHolder, position: Int, payloads: MutableList<Any>) {
+    override fun onBindViewHolder(holder: BaseViewHolder, position: Int, payloads: MutableList<Any>) {
         if (payloads.isNotEmpty()) {
             holder.partialBind(position, payloads)
 
@@ -1217,7 +1263,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
     // region ViewHolders
 
-    open class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+    open class BaseViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
 
         open fun bind(adapterPosition: Int) {}
 
@@ -1226,7 +1272,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         }
     }
 
-    abstract inner class SectionViewHolder(itemView: View) : ViewHolder(itemView) {
+    abstract inner class SectionViewHolder(itemView: View) : BaseViewHolder(itemView) {
 
         final override fun bind(adapterPosition: Int) {
             findSectionForAdapterPosition(adapterPosition)?.let { section ->
@@ -1251,7 +1297,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         }
     }
 
-    abstract inner class ItemViewHolder(itemView: View) : SectionViewHolder(itemView) {
+    abstract inner class SectionItemViewHolder(itemView: View) : SectionViewHolder(itemView) {
 
         final override fun bind(adapterPosition: Int, sectionPosition: Int, sectionKey: TSectionKey) {
             getSectionForKey(sectionKey)?.let { section ->

@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+@SuppressWarnings("FieldCanBeLocal")
 public class ExampleActivityJava extends AppCompatActivity {
 
     private static final int SECTION_COUNT = 5;
@@ -52,8 +53,6 @@ public class ExampleActivityJava extends AppCompatActivity {
         mAdapter.forEach((item, integer, integer2) -> Unit.INSTANCE);
     }
 
-    void stuff() {}
-
     class Item {
         int id;
         int section;
@@ -63,6 +62,7 @@ public class ExampleActivityJava extends AppCompatActivity {
             this.section = section;
         }
 
+        @SuppressLint("DefaultLocale")
         @NonNull
         @Override
         public String toString() {
@@ -80,12 +80,17 @@ public class ExampleActivityJava extends AppCompatActivity {
 
         @NonNull
         @Override
-        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        public BaseViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             final LayoutInflater inflater = LayoutInflater.from(parent.getContext());
             return new ItemViewHolder(inflater.inflate(R.layout.cell_item, parent, false));
         }
 
-        class ItemViewHolder extends SectioningAdapter<Item, Integer>.ItemViewHolder {
+        @Override
+        protected int getHeaderViewTypeForSection(@NotNull Integer integer, int headerIndex) {
+            return super.getHeaderViewTypeForSection(integer, headerIndex);
+        }
+
+        class ItemViewHolder extends SectionItemViewHolder {
 
             private final TextView title;
 
@@ -99,6 +104,7 @@ public class ExampleActivityJava extends AppCompatActivity {
             public void bind(int adapterPosition, int sectionPosition, int sectionItemPosition, @NotNull Integer integer, @NotNull Item item) {
                 title.setText(String.format("Item: %d, section: %d", item.id, item.section));
             }
+
         }
     }
 }
