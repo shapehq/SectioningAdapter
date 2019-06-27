@@ -24,7 +24,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
         private const val TAG = "SectioningAdapter"
 
         private const val ITEM_COUNT = 10
-        private const val SECTION_COUNT = 5
+        private const val SECTION_COUNT = 10
 
         private const val VIEW_TYPE_ITEM = 1
         private const val VIEW_TYPE_SECTION_HEADER = 2
@@ -88,6 +88,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
     }
 
     private fun shuffle() {
+
         items.forEach {
             it.section = rng.nextInt(SECTION_COUNT) + 1
         }
@@ -135,11 +136,13 @@ class ExampleActivityKotlin : AppCompatActivity() {
     }
 
     private fun addItems() {
-        sectioningAdapter.addItems(items2)
+//        sectioningAdapter.addItems(items2)
+        sectioningAdapter.getAllItems().first().section++
+        sectioningAdapter.refresh()
     }
 
     private fun removeItems() {
-        sectioningAdapter.removeItems(items.subList(0, ITEM_COUNT / 2))
+        sectioningAdapter.removeAllItems()
     }
 
     data class Item(var id: Int, var section: Int)
@@ -148,6 +151,18 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
         init {
             collapseNewSections = false
+        }
+
+        override fun onContentChanged() {
+            Log.d(TAG, "Update time: $mostRecentUpdateTime ms")
+        }
+
+        override fun areItemsTheSame(oldItem: Item, newItem: Item): Boolean {
+            return super.areItemsTheSame(oldItem, newItem)
+        }
+
+        override fun areContentsTheSame(oldItem: Item, newItem: Item): Boolean {
+            return super.areContentsTheSame(oldItem, newItem)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BaseViewHolder {
@@ -195,11 +210,22 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
         inner class GlobalHeaderViewHolder(view: View) : BaseViewHolder(view) {
             init {
-                with(itemView) {
-                    itemHeader.text = "Global Header"
-                    setOnClickListener {
-                        toggleExpandAllSections()
-                    }
+                itemView.setOnClickListener {
+                    startBulkUpdate()
+                    updateGlobalHeader(0, "Hello")
+                    updateGlobalFooter(0, "BORK")
+                    toggleExpandAllSections()
+                    endBulkUpdate()
+                }
+            }
+
+            override fun bind(adapterPosition: Int) {
+                itemView.itemHeader.text = "Global Header"
+            }
+
+            override fun partialBind(adapterPosition: Int, payloads: MutableList<Any>) {
+                if (payloads.isNotEmpty()) {
+                    itemView.itemHeader.text = payloads.first().toString()
                 }
             }
         }
@@ -207,10 +233,19 @@ class ExampleActivityKotlin : AppCompatActivity() {
         inner class GlobalFooterViewHolder(view: View) : BaseViewHolder(view) {
             init {
                 with(itemView) {
-                    itemHeader.text = "Global Footer"
                     setOnClickListener {
                         collapseAllSections()
                     }
+                }
+            }
+
+            override fun bind(adapterPosition: Int) {
+                itemView.itemHeader.text = "Global Footer"
+            }
+
+            override fun partialBind(adapterPosition: Int, payloads: MutableList<Any>) {
+                if (payloads.isNotEmpty()) {
+                    itemView.itemHeader.text = payloads.first().toString()
                 }
             }
         }
@@ -246,9 +281,27 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
         inner class SectionNoContentViewHolder(view: View) : SectionViewHolder(view) {
 
+            init {
+                with(itemView) {
+                    setOnClickListener {
+                        getSectionKey()?.let {
+                            updateNoContentForSection(it, " blugr")
+                        }
+                    }
+                }
+            }
+
             override fun bind(adapterPosition: Int, sectionPosition: Int, sectionKey: Int) {
                 with(itemView) {
                     noContent.text = "Section $sectionKey is empty"
+                }
+            }
+
+            override fun partialBind(adapterPosition: Int, sectionPosition: Int, sectionKey: Int, payloads: MutableList<Any>) {
+                with(itemView) {
+                    if (payloads.isNotEmpty()) {
+                        noContent.text = noContent.text.toString() + payloads.first().toString()
+                    }
                 }
             }
         }
@@ -266,7 +319,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
             override fun bind(adapterPosition: Int, sectionPosition: Int, sectionItemPosition: Int, sectionKey: Int, item: Item) {
                 with(itemView) {
-                    itemTitle.text = "Item ${item.id}"
+                    itemTitle.text = "[${item.section}] Item ${item.id}"
                 }
             }
 
