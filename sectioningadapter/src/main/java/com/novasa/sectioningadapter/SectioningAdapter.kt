@@ -1034,7 +1034,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         } else if (!section.isEmpty) {
             val size = section.itemSize
             removeContentRange(section.adapterPosition + section.headerCount, size)
-            offsetSectionPositions(-size, section.index)
+            offsetSectionPositions(-size, section.index + 1)
             globalSectionsSize -= size
 
             section.items.clear()
