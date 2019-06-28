@@ -132,7 +132,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
             Item(104, 1)
         )
 
-        sectioningAdapter.setItemsInSection(2, items)
+        sectioningAdapter.setItemsInSection(3, items)
     }
 
     private fun addItems() {
