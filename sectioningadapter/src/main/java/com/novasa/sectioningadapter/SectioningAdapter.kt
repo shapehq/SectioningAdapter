@@ -9,7 +9,7 @@ import androidx.recyclerview.widget.*
 @Suppress("MemberVisibilityCanBePrivate", "unused")
 abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.Adapter<SectioningAdapter.BaseViewHolder>() {
 
-    object GlobalSectionKey {
+    private object GlobalSectionKey {
         override fun toString(): String = "Global section key"
     }
 
@@ -35,7 +35,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
             let(oldItem.item, newItem.item) { o, n ->
                 areContentsTheSame(o, n)
 
-            } ?: let(oldItem.nonItem, newItem.nonItem) { o, n ->
+            } ?: let(oldItem.nonItem, newItem.nonItem) { _, n ->
                 !n.hasPendingChange
 
             } ?: true
@@ -44,8 +44,8 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
             let(oldItem.item, newItem.item) { o, n ->
                 getChangePayload(o, n)
 
-            } ?: let(oldItem.nonItem, newItem.nonItem) { o, n ->
-                n.consumeChangePayload()
+            } ?: let(oldItem.nonItem, newItem.nonItem) { _, n ->
+                n.consumePendingChange()
             }
     }
 
@@ -138,21 +138,6 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
             this.nonItem = nonItem
         }
 
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (javaClass != other?.javaClass) return false
-
-            other as Wrapper<*>
-
-            return when {
-                item != other.item -> false
-                nonItem != other.nonItem -> false
-                else -> true
-            }
-        }
-
-        override fun hashCode(): Int = item?.hashCode() ?: nonItem?.hashCode() ?: 0
-
         override fun toString(): String = "Wrapper: ${item ?: nonItem ?: "empty"}"
     }
 
@@ -164,12 +149,19 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
             const val TYPE_NO_CONTENT = 3
         }
 
-        var changePayload: Any? = null
+        var hasPendingChange: Boolean = false
+            private set
 
-        val hasPendingChange: Boolean
-                get() = changePayload != null
+        private var changePayload: Any? = null
 
-        fun consumeChangePayload(): Any? {
+        fun setHasPendingChange(payload: Any?) {
+            hasPendingChange = true
+            changePayload = payload
+        }
+
+        fun consumePendingChange(): Any? {
+            hasPendingChange = false
+
             val payload = changePayload
             changePayload = null
             return payload
@@ -228,7 +220,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         updateSections()
     }
 
-    fun startBulkUpdate() {
+    fun beginBulkUpdate() {
         bulkUpdateInProgress = true
     }
 
@@ -464,7 +456,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
             val reuseWrappers = SparseArray<Wrapper<TItem>>(size)
 
             forEach { wrapper: Wrapper<TItem> ->
-                reuseWrappers.put(wrapper.hashCode(), wrapper)
+                reuseWrappers.put(wrapper.item?.hashCode() ?: wrapper.nonItem?.hashCode() ?: 0, wrapper)
             }
 
             fun getWrapper(hash: Int): Wrapper<TItem> = reuseWrappers.get(hash) ?: Wrapper()
@@ -810,13 +802,13 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     protected open fun getHeaderViewTypeForSection(sectionKey: TSectionKey, headerIndex: Int): Int =
         throw NotImplementedError("Must override getHeaderViewTypeForSection() if getHeaderCountForSectionKey() returns > 0")
 
-    fun updateHeaderForSection(sectionKey: TSectionKey, position: Int, payload: Any?) {
+    fun notifySectionHeaderChanged(sectionKey: TSectionKey, position: Int, payload: Any? = null) {
         getSectionForKey(sectionKey)?.let { section ->
             require(position in 0 until section.headerCount) {
                 "Failed to update section header. Invalid position: $position. Current header count was ${section.headerCount}"
             }
 
-            section.headers[position].changePayload = payload
+            section.headers[position].setHasPendingChange(payload)
 
             submitUpdate()
         }
@@ -845,13 +837,13 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     protected open fun getFooterViewTypeForSection(sectionKey: TSectionKey, footerIndex: Int): Int =
         throw NotImplementedError("Must override getFooterViewTypeForSection() if getFooterCountForSectionKey() returns > 0")
 
-    fun updateFooterForSection(sectionKey: TSectionKey, position: Int, payload: Any?) {
+    fun notifySectionFooterChanged(sectionKey: TSectionKey, position: Int, payload: Any? = null) {
         getSectionForKey(sectionKey)?.let { section ->
             require(position in 0 until section.footerCount) {
                 "Failed to update section footer. Invalid position: $position. Current footer count was ${section.headerCount}"
             }
 
-            section.footers[position].changePayload = payload
+            section.footers[position].setHasPendingChange(payload)
 
             submitUpdate()
         }
@@ -882,12 +874,10 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     protected open fun getNoContentViewTypeForStaticSection(sectionKey: TSectionKey): Int =
         throw NotImplementedError("Must override getNoContentViewTypeForStaticSection() if showNoContentForStaticSection() return true.")
 
-    fun updateNoContentForSection(sectionKey: TSectionKey, payload: Any?) {
+    fun notifySectionNoContentChanged(sectionKey: TSectionKey, payload: Any? = null) {
         getSectionForKey(sectionKey)?.let { section ->
-
             section.noContent?.let {
-                it.changePayload = payload
-
+                it.setHasPendingChange(payload)
                 submitUpdate()
             }
         }
@@ -1313,12 +1303,12 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      * @param position The global header position. Must be in the range 0 - [globalHeaderCount] (exclusive)
      * @param payload The payload to send to the view holder. It will be received in the [BaseViewHolder.partialBind] function.
      */
-    fun updateGlobalHeader(position: Int, payload: Any?) {
+    fun notifyGlobalHeaderChanged(position: Int, payload: Any? = null) {
         require(position in 0 until globalHeaderCount) {
             "Failed to update global header. Invalid position: $position. Current global header count was $globalHeaderCount"
         }
 
-        globalHeaders[position].changePayload = payload
+        globalHeaders[position].setHasPendingChange(payload)
 
         submitUpdate()
     }
@@ -1367,12 +1357,12 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      * @param position The global footer position. Must be in the range 0 - [globalFooterCount] (exclusive)
      * @param payload The payload to send to the view holder. It will be received in the [BaseViewHolder.partialBind] function.
      */
-    fun updateGlobalFooter(position: Int, payload: Any?) {
+    fun notifyGlobalFooterChanged(position: Int, payload: Any? = null) {
         require(position in 0 until globalFooterCount) {
             "Failed to update global footer. Invalid position: $position. Current global footer count was $globalFooterCount"
         }
 
-        globalFooters[position].changePayload = payload
+        globalFooters[position].setHasPendingChange(payload)
 
         submitUpdate()
     }
@@ -1402,9 +1392,9 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         throw NotImplementedError("Must override getNoContentViewType() if showNoContent == true")
     }
 
-    fun updateGlobalNoContent(payload: Any?) {
+    fun notifyGlobalNoContentChanged(payload: Any? = null) {
         globalNoContent?.let {
-            it.changePayload = payload
+            it.setHasPendingChange(payload)
 
             submitUpdate()
         }

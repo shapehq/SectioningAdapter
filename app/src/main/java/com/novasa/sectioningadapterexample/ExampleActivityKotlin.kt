@@ -211,9 +211,9 @@ class ExampleActivityKotlin : AppCompatActivity() {
         inner class GlobalHeaderViewHolder(view: View) : BaseViewHolder(view) {
             init {
                 itemView.setOnClickListener {
-                    startBulkUpdate()
-                    updateGlobalHeader(0, "Hello")
-                    updateGlobalFooter(0, "BORK")
+                    beginBulkUpdate()
+                    notifyGlobalHeaderChanged(0, "Hello")
+                    notifyGlobalFooterChanged(0, "BORK")
                     toggleExpandAllSections()
                     endBulkUpdate()
                 }
@@ -258,6 +258,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
                         requestFocus()
                         getSectionKey()?.let {
                             toggleExpandSection(it)
+                            notifySectionHeaderChanged(it, 0)
                         }
                     }
                 }
@@ -266,6 +267,12 @@ class ExampleActivityKotlin : AppCompatActivity() {
             override fun bind(adapterPosition: Int, sectionPosition: Int, sectionKey: Int) {
                 with(itemView) {
                     itemHeader.text = "Section $sectionKey"
+                }
+            }
+
+            override fun partialBind(adapterPosition: Int, sectionPosition: Int, sectionKey: Int, payloads: MutableList<Any>) {
+                if (payloads.isNotEmpty()) {
+                    itemView.itemHeader.text = payloads.first().toString()
                 }
             }
         }
@@ -285,7 +292,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
                 with(itemView) {
                     setOnClickListener {
                         getSectionKey()?.let {
-                            updateNoContentForSection(it, " blugr")
+                            notifySectionNoContentChanged(it, " blugr")
                         }
                     }
                 }
