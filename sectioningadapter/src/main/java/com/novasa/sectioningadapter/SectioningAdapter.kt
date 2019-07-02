@@ -1463,6 +1463,14 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         }
     }
 
+    override fun onViewAttachedToWindow(holder: BaseViewHolder) {
+        holder.onAttachedToWindow()
+    }
+
+    override fun onViewDetachedFromWindow(holder: BaseViewHolder) {
+        holder.onDetachedFromWindow()
+    }
+
     // endregion
 
 
@@ -1475,6 +1483,9 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         open fun partialBind(adapterPosition: Int, payloads: MutableList<Any>) {
             bind(adapterPosition)
         }
+
+        open fun onAttachedToWindow() {}
+        open fun onDetachedFromWindow() {}
     }
 
     abstract inner class SectionViewHolder(itemView: View) : BaseViewHolder(itemView) {
