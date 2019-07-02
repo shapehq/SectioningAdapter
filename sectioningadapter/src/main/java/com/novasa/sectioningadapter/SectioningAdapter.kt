@@ -13,7 +13,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         override fun toString(): String = "Global section key"
     }
 
-    val handler = Handler()
+    private val handler = Handler()
 
     // region Diff
 
@@ -182,8 +182,6 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     private val sections = ArrayList<Section>()
     private val sectionsMap = HashMap<TSectionKey, Section>()
 
-    private var bulkUpdateInProgress: Boolean = false
-
     /**
      * The main update function of the adapter. When this is called, the items will be sorted into sections, according to the result of [getSectionKeyForItem].
      *
@@ -218,17 +216,6 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         }
 
         updateSections()
-    }
-
-    fun beginBulkUpdate() {
-        bulkUpdateInProgress = true
-    }
-
-    fun endBulkUpdate() {
-        if (bulkUpdateInProgress) {
-            bulkUpdateInProgress = false
-            submitUpdate()
-        }
     }
 
     /**
@@ -517,13 +504,16 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         submitUpdate()
     }
 
-    private fun submitUpdate() {
-        if (!bulkUpdateInProgress) {
-            diffTimeRef = SystemClock.elapsedRealtime()
+    private val update = {
+        diffTimeRef = SystemClock.elapsedRealtime()
 
-            onContentWillChange()
-            differ.submitList(ArrayList(content))
-        }
+        onContentWillChange()
+        differ.submitList(ArrayList(content))
+    }
+
+    private fun submitUpdate() {
+        handler.removeCallbacksAndMessages(update)
+        handler.post(update)
     }
 
     private fun removeContentRange(p0: Int, size: Int) {

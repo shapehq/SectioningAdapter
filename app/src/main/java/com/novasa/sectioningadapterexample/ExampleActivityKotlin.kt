@@ -65,6 +65,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
         }
 
         sectioningAdapter.insertGlobalHeader(0, VIEW_TYPE_GLOBAL_HEADER)
+        sectioningAdapter.insertGlobalHeader(1, VIEW_TYPE_GLOBAL_HEADER)
         sectioningAdapter.insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
 
         sectioningAdapter.addStaticSections(listOf(1, 2, 3, 4, 5))
@@ -211,11 +212,9 @@ class ExampleActivityKotlin : AppCompatActivity() {
         inner class GlobalHeaderViewHolder(view: View) : BaseViewHolder(view) {
             init {
                 itemView.setOnClickListener {
-                    beginBulkUpdate()
                     notifyGlobalHeaderChanged(0, "Hello")
                     notifyGlobalFooterChanged(0, "BORK")
                     toggleExpandAllSections()
-                    endBulkUpdate()
                 }
             }
 
