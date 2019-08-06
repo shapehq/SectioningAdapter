@@ -67,9 +67,17 @@ class ExampleActivityKotlin : AppCompatActivity() {
         sectioningAdapter.insertGlobalHeader(0, VIEW_TYPE_GLOBAL_HEADER)
         sectioningAdapter.insertGlobalHeader(1, VIEW_TYPE_GLOBAL_HEADER)
         sectioningAdapter.insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
+        sectioningAdapter.insertGlobalHeader(1, VIEW_TYPE_GLOBAL_HEADER)
+        sectioningAdapter.insertGlobalHeader(1, VIEW_TYPE_GLOBAL_HEADER)
+        sectioningAdapter.insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
 
         sectioningAdapter.addStaticSections(listOf(1, 2, 3, 4, 5))
         sectioningAdapter.setItems(items)
+
+        sectioningAdapter.insertGlobalHeader(1, VIEW_TYPE_GLOBAL_HEADER)
+        sectioningAdapter.insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
+        sectioningAdapter.insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
+
 
         buttonShuffle.setOnClickListener {
             shuffle()
@@ -181,17 +189,17 @@ class ExampleActivityKotlin : AppCompatActivity() {
             }
         }
 
-        override fun showGlobalNoContent(): Boolean = true
+        override fun showGlobalNoContent(): Boolean = false
 
         override fun getGlobalNoContentViewType(): Int = VIEW_TYPE_GLOBAL_NO_CONTENT
 
         override fun getSectionKeyForItem(item: Item): Int = item.section
 
-        override fun getHeaderCountForSectionKey(sectionKey: Int): Int = 1
+        override fun getHeaderCountForSection(sectionKey: Int): Int = 1
 
-        override fun getFooterCountForSectionKey(sectionKey: Int): Int = 1
+        override fun getFooterCountForSection(sectionKey: Int): Int = 0
 
-        override fun getItemViewTypeForSection(sectionKey: Int, adapterPosition: Int): Int = VIEW_TYPE_ITEM
+        override fun getItemViewTypeForSection(sectionKey: Int): Int = VIEW_TYPE_ITEM
 
         override fun getHeaderViewTypeForSection(sectionKey: Int, headerIndex: Int): Int = VIEW_TYPE_SECTION_HEADER
 
@@ -257,7 +265,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
                         requestFocus()
                         getSectionKey()?.let {
                             toggleExpandSection(it)
-                            notifySectionHeaderChanged(it, 0)
+//                            notifySectionHeaderChanged(it, 0)
                         }
                     }
                 }

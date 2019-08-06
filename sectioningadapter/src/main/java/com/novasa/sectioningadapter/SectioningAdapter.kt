@@ -2,9 +2,14 @@ package com.novasa.sectioningadapter
 
 import android.os.Handler
 import android.os.SystemClock
-import android.util.SparseArray
 import android.view.View
 import androidx.recyclerview.widget.*
+import java.util.*
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.Comparator
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
+import kotlin.collections.HashSet
 
 @Suppress("MemberVisibilityCanBePrivate", "unused")
 abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.Adapter<SectioningAdapter.BaseViewHolder>() {
@@ -13,12 +18,14 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         override fun toString(): String = "Global section key"
     }
 
-    private val handler = Handler()
+    private val updateHandler = Handler()
 
     // region Diff
 
-    var diffTimeRef = -1L
     var mostRecentUpdateTime = -1L
+    private var diffTimeRef = -1L
+    private var updateInProgress = AtomicBoolean(false)
+    private var pendingUpdate = AtomicBoolean(false)
 
     private val differItemCallback = object : DiffUtil.ItemCallback<Wrapper<TItem>>() {
 
@@ -70,8 +77,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
     private val differ = AsyncListDiffer<Wrapper<TItem>>(listUpdateCallback, AsyncDifferConfig.Builder(differItemCallback).build()).apply {
         addListListener { _, _ ->
-            mostRecentUpdateTime = SystemClock.elapsedRealtime() - diffTimeRef
-            onContentChanged()
+            onUpdateComplete()
         }
     }
 
@@ -123,20 +129,10 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
     // region Content
 
-    private class Wrapper<TItem> {
+    private class Wrapper<TItem>(val viewType: Int, val item: TItem?, val nonItem: NonItem?) {
 
-        var item: TItem? = null
-        var nonItem: NonItem? = null
-
-        constructor()
-
-        constructor(item: TItem) {
-            this.item = item
-        }
-
-        constructor(nonItem: NonItem) {
-            this.nonItem = nonItem
-        }
+        constructor(viewType: Int, item: TItem) : this(viewType, item, null)
+        constructor(viewType: Int, nonItem: NonItem) : this(viewType, null, nonItem)
 
         override fun toString(): String = "Wrapper: ${item ?: nonItem ?: "empty"}"
     }
@@ -176,11 +172,15 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     }
 
     private val content = ArrayList<Wrapper<TItem>>()
+
+    private var submittedContent = Collections.emptyList<Wrapper<TItem>>()
+
     private val globalHeaders = ArrayList<NonItem>()
     private val globalFooters = ArrayList<NonItem>()
 
     private val sections = ArrayList<Section>()
     private val sectionsMap = HashMap<TSectionKey, Section>()
+
 
     /**
      * The main update function of the adapter. When this is called, the items will be sorted into sections, according to the result of [getSectionKeyForItem].
@@ -409,12 +409,15 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
         sections.forEachIndexed { i, section: Section ->
             with(section) {
-                headerCount = getHeaderCountForSectionKey(key)
+
+                itemViewType = getItemViewTypeForSection(section.key)
+
+                headerCount = getHeaderCountForSection(key)
                 require(headerCount >= 0) {
                     "Section header count must be >= 0"
                 }
 
-                footerCount = getFooterCountForSectionKey(key)
+                footerCount = getFooterCountForSection(key)
                 require(footerCount >= 0) {
                     "Section footer count must be >= 0"
                 }
@@ -440,28 +443,10 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     private fun refreshContent() {
         with(content) {
 
-            val reuseWrappers = SparseArray<Wrapper<TItem>>(size)
-
-            forEach { wrapper: Wrapper<TItem> ->
-                reuseWrappers.put(wrapper.item?.hashCode() ?: wrapper.nonItem?.hashCode() ?: 0, wrapper)
-            }
-
-            fun getWrapper(hash: Int): Wrapper<TItem> = reuseWrappers.get(hash) ?: Wrapper()
-
-            fun getWrapper(item: TItem): Wrapper<TItem> = getWrapper(item.hashCode()).also {
-                it.item = item
-                it.nonItem = null
-            }
-
-            fun getWrapper(nonItem: NonItem): Wrapper<TItem> = getWrapper(nonItem.hashCode()).also {
-                it.item = null
-                it.nonItem = nonItem
-            }
-
             clear()
 
             for (header: NonItem in globalHeaders) {
-                add(getWrapper(header))
+                add(createWrapper(header))
             }
 
             globalNoContentVisible = false
@@ -469,35 +454,35 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
                 for (section: Section in sections) {
                     with(section) {
                         for (footer: NonItem in headers) {
-                            add(getWrapper(footer))
+                            add(createWrapper(footer))
                         }
 
                         if (!collapsed) {
                             if (isEmpty && emptyContentCount > 0) {
                                 for (item: NonItem in emptyContent) {
-                                    add(getWrapper(item))
+                                    add(createWrapper(item))
                                 }
 
                             } else {
                                 for (item: TItem in items) {
-                                    add(getWrapper(item))
+                                    add(createWrapper(item, section))
                                 }
                             }
                         }
 
                         for (footer: NonItem in footers) {
-                            add(getWrapper(footer))
+                            add(createWrapper(footer))
                         }
                     }
                 }
 
             } else if (showGlobalNoContent()) {
-                add(getWrapper(getGlobalNoContent()))
+                add(createWrapper(getGlobalNoContent()))
                 globalNoContentVisible = true
             }
 
             for (footer: NonItem in globalFooters) {
-                add(getWrapper(footer))
+                add(createWrapper(footer))
             }
         }
 
@@ -505,15 +490,36 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     }
 
     private val update = {
-        diffTimeRef = SystemClock.elapsedRealtime()
 
-        onContentWillChange()
-        differ.submitList(ArrayList(content))
+        if (updateInProgress.get()) {
+            pendingUpdate.set(true)
+
+        } else {
+            updateInProgress.set(true)
+            diffTimeRef = SystemClock.elapsedRealtime()
+
+            onContentWillChange()
+
+            submittedContent = ArrayList(content)
+            differ.submitList(submittedContent)
+        }
     }
 
     private fun submitUpdate() {
-        handler.removeCallbacksAndMessages(update)
-        handler.post(update)
+        updateHandler.removeCallbacksAndMessages(null)
+        updateHandler.post(update)
+    }
+
+    private fun onUpdateComplete() {
+        updateInProgress.set(false)
+        mostRecentUpdateTime = SystemClock.elapsedRealtime() - diffTimeRef
+
+        onContentChanged()
+
+        if (pendingUpdate.get()) {
+            pendingUpdate.set(false)
+            submitUpdate()
+        }
     }
 
     private fun removeContentRange(p0: Int, size: Int) {
@@ -525,6 +531,11 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
             content.removeAt(p0)
         }
     }
+
+
+    private fun createWrapper(item: TItem, section: Section): Wrapper<TItem> = Wrapper(section.itemViewType, item)
+
+    private fun createWrapper(nonItem: NonItem): Wrapper<TItem> = Wrapper(nonItem.viewType, nonItem)
 
     // endregion
 
@@ -552,11 +563,10 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      *
      * Default is 0.
      * @param sectionKey The section sectionKey
-     * @param adapterPosition The current adapter position of the view that is being determined.
      * @see [RecyclerView.Adapter.getItemViewType]
      * @see [onCreateViewHolder]
      */
-    protected open fun getItemViewTypeForSection(sectionKey: TSectionKey, adapterPosition: Int): Int = super.getItemViewType(adapterPosition)
+    protected open fun getItemViewTypeForSection(sectionKey: TSectionKey): Int = 0
 
     /**
      * Get the current index of the supplied section sectionKey, or -1 if the section is not in the adapter.
@@ -575,10 +585,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
             sections.clear()
             sectionsMap.clear()
 
-            if (showGlobalNoContent()) {
-                content.add(globalHeaderCount, Wrapper(getGlobalNoContent()))
-                globalNoContentVisible = true
-            }
+            insertGlobalNoContentIfRequired()
 
             submitUpdate()
         }
@@ -627,9 +634,8 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         offsetSectionIndices(-1, section.index)
 
         globalSectionsSize -= size
-        if (globalSectionsSize == 0 && showGlobalNoContent()) {
-            content.add(globalHeaderCount, Wrapper(getGlobalNoContent()))
-            globalNoContentVisible = true
+        if (globalSectionsSize == 0) {
+            insertGlobalNoContentIfRequired()
         }
 
         submitUpdate()
@@ -658,6 +664,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     private inner class Section(val key: TSectionKey) {
 
         val items = ArrayList<TItem>()
+        var itemViewType: Int = 0
         lateinit var headers: ArrayList<NonItem>
         lateinit var footers: ArrayList<NonItem>
         lateinit var emptyContent: ArrayList<NonItem>
@@ -779,13 +786,13 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      * @return The number of headers that the given section should display. Must be >= 0.
      * @see [getHeaderViewTypeForSection]
      */
-    protected open fun getHeaderCountForSectionKey(sectionKey: TSectionKey) = 0
+    protected open fun getHeaderCountForSection(sectionKey: TSectionKey) = 0
 
     /**
-     * If [getHeaderCountForSectionKey] returns > 0, this must also be overridden, to determine the view types of the section headers.
+     * If [getHeaderCountForSection] returns > 0, this must also be overridden, to determine the view types of the section headers.
      * @param sectionKey The section sectionKey
      * @param headerIndex The index of the header. This is relative to the section, so if all sections have only one section header, this will always be 0.
-     * @see [getHeaderCountForSectionKey]
+     * @see [getHeaderCountForSection]
      * @see [RecyclerView.Adapter.getItemViewType]
      * @see [onCreateViewHolder]
      */
@@ -814,13 +821,13 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      * @return The number of footers that the given section should display. Must be >= 0.
      * @see [getFooterViewTypeForSection]
      */
-    protected open fun getFooterCountForSectionKey(sectionKey: TSectionKey) = 0
+    protected open fun getFooterCountForSection(sectionKey: TSectionKey) = 0
 
     /**
-     * If [getFooterCountForSectionKey] returns > 0, this must also be overridden, to determine the view types of the section footers.
+     * If [getFooterCountForSection] returns > 0, this must also be overridden, to determine the view types of the section footers.
      * @param sectionKey The section sectionKey
      * @param footerIndex The index of the footer. This is relative to the section, so if all sections have only one section footer, this will always be 0.
-     * @see [getFooterCountForSectionKey]
+     * @see [getFooterCountForSection]
      * @see [RecyclerView.Adapter.getItemViewType]
      * @see [onCreateViewHolder]
      */
@@ -830,7 +837,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     fun notifySectionFooterChanged(sectionKey: TSectionKey, position: Int, payload: Any? = null) {
         getSectionForKey(sectionKey)?.let { section ->
             require(position in 0 until section.footerCount) {
-                "Failed to update section footer. Invalid position: $position. Current footer count was ${section.headerCount}"
+                "Failed to update section footer. Invalid position: $position. Current footer count was ${section.footerCount}"
             }
 
             section.footers[position].setHasPendingChange(payload)
@@ -1205,13 +1212,13 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
             if (!section.isEmpty) {
                 size = section.itemCount
                 for (i in 0 until size) {
-                    content.add(i + p0, Wrapper(section.items[i]))
+                    content.add(i + p0, createWrapper(section.items[i], section))
                 }
 
             } else {
                 size = section.emptyContentCount
                 for (i in 0 until size) {
-                    content.add(i + p0, Wrapper(section.emptyContent[i]))
+                    content.add(i + p0, createWrapper(section.emptyContent[i]))
                 }
             }
 
@@ -1256,7 +1263,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         val header = NonItem(NonItem.TYPE_HEADER, viewType, GlobalSectionKey, position)
 
         globalHeaders.add(position, header)
-        content.add(position, Wrapper(header))
+        content.add(position, createWrapper(header))
 
         offsetSectionPositions(1)
 
@@ -1314,7 +1321,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         val footer = NonItem(NonItem.TYPE_FOOTER, viewType, GlobalSectionKey, position)
 
         globalFooters.add(position, footer)
-        content.add(globalHeaderCount + globalSectionsSize + globalNonItemContentSize + position, Wrapper(footer))
+        content.add(globalHeaderCount + globalSectionsSize + globalNonItemContentSize + position, createWrapper(footer))
 
         submitUpdate()
     }
@@ -1398,47 +1405,22 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         }
     }
 
+    private fun insertGlobalNoContentIfRequired() {
+        if (showGlobalNoContent()) {
+            val globalNoContent = getGlobalNoContent()
+            content.add(globalHeaderCount, Wrapper(globalNoContent.viewType, globalNoContent))
+            globalNoContentVisible = true
+        }
+    }
+
     // endregion
 
 
     // region Adapter overrides
 
-    final override fun getItemCount(): Int = content.size
+    final override fun getItemCount(): Int = submittedContent.size
 
-    final override fun getItemViewType(position: Int): Int = when (position) {
-
-        // Global headers
-        in 0 until globalHeaderCount -> globalHeaders[position].viewType
-
-        // Global no content
-        globalNoContentPosition -> getGlobalNoContentViewType()
-
-        // Global footer
-        in globalHeaderCount + globalSectionsSize + globalNonItemContentSize until itemCount -> globalFooters[position - globalHeaderCount - globalSectionsSize - globalNonItemContentSize].viewType
-
-        // Section
-        else -> findSectionForAdapterPosition(position)?.run {
-
-            // Local section position
-            when (val sectionPosition = position - adapterPosition) {
-
-                // Section headers
-                in 0 until headerCount -> headers[sectionPosition].viewType
-
-                // Section item
-                in headerCount until headerCount + itemSize -> getItemViewTypeForSection(key, position)
-
-                // Section empty content (only > 0 if itemCount == 0)
-                in headerCount until headerCount + emptyContentSize -> emptyContent[sectionPosition - headerCount].viewType
-
-                // Section footer
-                in headerCount + itemSize + emptyContentSize until size -> footers[sectionPosition - headerCount - itemSize - emptyContentSize].viewType
-
-                // Should never happen
-                else -> null
-            }
-        } ?: throw IllegalStateException("Tried to get view type for invalid adapter position")
-    }
+    final override fun getItemViewType(position: Int): Int = submittedContent[position].viewType
 
     override fun onBindViewHolder(holder: BaseViewHolder, position: Int) {
         holder.bind(position)
