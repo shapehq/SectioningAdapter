@@ -697,7 +697,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
             get() = if (collapsed) 0 else emptyContentCount
 
         var headerCount: Int
-            get() = headers.size
+            get() = if (::headers.isInitialized) headers.size else 0
             set(value) {
                 headers = ArrayList(value)
                 for (i in 0 until value) {
@@ -707,7 +707,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
             }
 
         var footerCount: Int
-            get() = footers.size
+            get() = if (::footers.isInitialized) footers.size else 0
             set(value) {
                 footers = ArrayList(value)
                 for (i in 0 until value) {
@@ -729,7 +729,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
             }
 
         val noContent: NonItem?
-            get() = emptyContent.firstOrNull()
+            get() = if (::emptyContent.isInitialized) emptyContent.firstOrNull() else null
 
         private fun insertEmptyContent(item: NonItem, index: Int) {
             if (!::emptyContent.isInitialized) {
