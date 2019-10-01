@@ -1,23 +1,28 @@
 package com.novasa.sectioningadapterexample;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.novasa.sectioningadapter.SectioningAdapter;
-import kotlin.Unit;
+
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
+import kotlin.Unit;
 
 @SuppressWarnings("FieldCanBeLocal")
 public class ExampleActivityJava extends AppCompatActivity {
@@ -78,10 +83,10 @@ public class ExampleActivityJava extends AppCompatActivity {
             return item.section;
         }
 
-        @NonNull
+        @NotNull
         @Override
-        public BaseViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            final LayoutInflater inflater = LayoutInflater.from(parent.getContext());
+        public BaseViewHolder onCreateViewHolder(@NotNull Context context, @NotNull ViewGroup parent, int viewType) {
+            final LayoutInflater inflater = LayoutInflater.from(context);
             return new ItemViewHolder(inflater.inflate(R.layout.cell_item, parent, false));
         }
 

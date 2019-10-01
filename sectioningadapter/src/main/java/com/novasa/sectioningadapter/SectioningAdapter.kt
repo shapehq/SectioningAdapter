@@ -1,8 +1,10 @@
 package com.novasa.sectioningadapter
 
+import android.content.Context
 import android.os.Handler
 import android.os.SystemClock
 import android.view.View
+import android.view.ViewGroup
 import androidx.recyclerview.widget.*
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
@@ -11,7 +13,7 @@ import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
 
-@Suppress("MemberVisibilityCanBePrivate", "unused")
+@Suppress("MemberVisibilityCanBePrivate", "unused", "SameParameterValue")
 abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.Adapter<SectioningAdapter.BaseViewHolder>() {
 
     private object GlobalSectionKey {
@@ -896,7 +898,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     }
 
     private fun itemComparator(key: TSectionKey): Comparator<TItem> = itemComparators.getOrPut(key) {
-        Comparator<TItem> { o1, o2 ->
+        Comparator { o1, o2 ->
             compareItems(key, o1, o2)
         }
     }
@@ -1422,6 +1424,21 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
     final override fun getItemViewType(position: Int): Int = submittedContent[position].viewType
 
+    final override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BaseViewHolder {
+        val context = parent.context
+        val holder = onCreateViewHolder(context, parent, viewType)
+
+        if (::viewHolderConfigs.isInitialized) {
+            for (config in viewHolderConfigs) {
+                config.onCreateViewHolder(holder, context, parent, viewType)
+            }
+        }
+
+        holder.onCreate()
+
+        return holder
+    }
+
     override fun onBindViewHolder(holder: BaseViewHolder, position: Int) {
         holder.bind(position)
     }
@@ -1448,7 +1465,21 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
     // region ViewHolders
 
+    private lateinit var viewHolderConfigs: ArrayList<ViewHolderConfig>
+
+    fun addViewHolderConfig(config: ViewHolderConfig) {
+        if (!::viewHolderConfigs.isInitialized) {
+            viewHolderConfigs = ArrayList()
+        }
+
+        viewHolderConfigs.add(config)
+    }
+
+    abstract fun onCreateViewHolder(context: Context, parent: ViewGroup, viewType: Int): BaseViewHolder
+
     open class BaseViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+
+        open fun onCreate() {}
 
         open fun bind(adapterPosition: Int) {}
 

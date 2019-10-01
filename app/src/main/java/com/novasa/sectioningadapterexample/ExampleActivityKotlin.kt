@@ -1,6 +1,7 @@
 package com.novasa.sectioningadapterexample
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -9,6 +10,7 @@ import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.novasa.sectioningadapter.SectioningAdapter
+import com.novasa.sectioningadapter.ViewHolderConfig
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.cell_header.view.*
 import kotlinx.android.synthetic.main.cell_item.view.*
@@ -160,6 +162,12 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
         init {
             collapseNewSections = false
+
+            addViewHolderConfig(object : ViewHolderConfig {
+                override fun onCreateViewHolder(holder: BaseViewHolder, context: Context, parent: ViewGroup, viewType: Int) {
+
+                }
+            })
         }
 
         override fun onContentChanged() {
@@ -174,8 +182,8 @@ class ExampleActivityKotlin : AppCompatActivity() {
             return super.areContentsTheSame(oldItem, newItem)
         }
 
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BaseViewHolder {
-            val inflater = LayoutInflater.from(parent.context)
+        override fun onCreateViewHolder(context: Context, parent: ViewGroup, viewType: Int): BaseViewHolder {
+            val inflater = LayoutInflater.from(context)
 
             return when (viewType) {
                 VIEW_TYPE_GLOBAL_HEADER -> GlobalHeaderViewHolder(inflater.inflate(R.layout.cell_header, parent, false))
