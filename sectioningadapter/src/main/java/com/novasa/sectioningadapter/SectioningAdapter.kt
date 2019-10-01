@@ -209,12 +209,13 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      */
     fun addItems(items: Collection<TItem>) {
         for (item in items) {
-            val key = getSectionKeyForItem(item)
-            val section = sectionsMap.getOrPut(key) {
-                createSection(key)
-            }
+            getSectionKeyForItem(item)?.let { key ->
+                val section = sectionsMap.getOrPut(key) {
+                    createSection(key)
+                }
 
-            section.items.add(item)
+                section.items.add(item)
+            }
         }
 
         updateSections()
@@ -756,9 +757,9 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      *
      * This is called for all items in the adapter, when they are supplied, to determine which section the item will belong to.
      * @param item Any and all items in the adapter.
-     * @return A unique sectionKey that will represent a section in the adapter.
+     * @return A unique sectionKey that will represent a section in the adapter, or null if the item should not be included in the data set.
      */
-    protected abstract fun getSectionKeyForItem(item: TItem): TSectionKey
+    protected abstract fun getSectionKeyForItem(item: TItem): TSectionKey?
 
     /**
      * Find the sectionKey for the section associated with the given adapter position.

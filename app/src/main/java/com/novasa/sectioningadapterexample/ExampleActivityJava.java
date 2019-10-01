@@ -77,7 +77,7 @@ public class ExampleActivityJava extends AppCompatActivity {
 
     class Adapter extends SectioningAdapter<Item, Integer> {
 
-        @NotNull
+        @Nullable
         @Override
         protected Integer getSectionKeyForItem(@NotNull Item item) {
             return item.section;
@@ -94,6 +94,7 @@ public class ExampleActivityJava extends AppCompatActivity {
         protected int getHeaderViewTypeForSection(@NotNull Integer integer, int headerIndex) {
             return super.getHeaderViewTypeForSection(integer, headerIndex);
         }
+
 
         class ItemViewHolder extends SectionItemViewHolder {
 

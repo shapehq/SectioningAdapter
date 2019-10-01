@@ -201,7 +201,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
         override fun getGlobalNoContentViewType(): Int = VIEW_TYPE_GLOBAL_NO_CONTENT
 
-        override fun getSectionKeyForItem(item: Item): Int = item.section
+        override fun getSectionKeyForItem(item: Item): Int? = if (item.section == 2) null  else item.section
 
         override fun getHeaderCountForSection(sectionKey: Int): Int = 1
 
