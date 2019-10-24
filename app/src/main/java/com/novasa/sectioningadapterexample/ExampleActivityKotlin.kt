@@ -32,9 +32,10 @@ class ExampleActivityKotlin : AppCompatActivity() {
         private const val VIEW_TYPE_SECTION_HEADER = 2
         private const val VIEW_TYPE_SECTION_FOOTER = 3
         private const val VIEW_TYPE_SECTION_NO_CONTENT = 4
-        private const val VIEW_TYPE_GLOBAL_HEADER = 5
-        private const val VIEW_TYPE_GLOBAL_FOOTER = 6
-        private const val VIEW_TYPE_GLOBAL_NO_CONTENT = 7
+        private const val VIEW_TYPE_GLOBAL_HEADER_1 = 5
+        private const val VIEW_TYPE_GLOBAL_HEADER_2 = 6
+        private const val VIEW_TYPE_GLOBAL_FOOTER = 7
+        private const val VIEW_TYPE_GLOBAL_NO_CONTENT = 8
 
         private const val UPDATE_INCREMENT = "update_increment"
     }
@@ -66,20 +67,19 @@ class ExampleActivityKotlin : AppCompatActivity() {
             adapter = sectioningAdapter
         }
 
-        sectioningAdapter.insertGlobalHeader(0, VIEW_TYPE_GLOBAL_HEADER)
-        sectioningAdapter.insertGlobalHeader(1, VIEW_TYPE_GLOBAL_HEADER)
-        sectioningAdapter.insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
-        sectioningAdapter.insertGlobalHeader(1, VIEW_TYPE_GLOBAL_HEADER)
-        sectioningAdapter.insertGlobalHeader(1, VIEW_TYPE_GLOBAL_HEADER)
-        sectioningAdapter.insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
+        with (sectioningAdapter) {
+            insertGlobalHeader(1, VIEW_TYPE_GLOBAL_HEADER_2)
+            insertGlobalHeader(0, VIEW_TYPE_GLOBAL_HEADER_1)
+            insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
+            insertGlobalFooter(1, VIEW_TYPE_GLOBAL_FOOTER)
 
-        sectioningAdapter.addStaticSections(listOf(1, 2, 3, 4, 5))
-        sectioningAdapter.setItems(items)
+            addStaticSections(listOf(1, 2, 3, 4, 5))
+            setItems(items)
 
-        sectioningAdapter.insertGlobalHeader(1, VIEW_TYPE_GLOBAL_HEADER)
-        sectioningAdapter.insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
-        sectioningAdapter.insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
-
+            insertGlobalHeader(0, VIEW_TYPE_GLOBAL_HEADER_1)
+            insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
+            insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
+        }
 
         buttonShuffle.setOnClickListener {
             shuffle()
@@ -186,7 +186,8 @@ class ExampleActivityKotlin : AppCompatActivity() {
             val inflater = LayoutInflater.from(context)
 
             return when (viewType) {
-                VIEW_TYPE_GLOBAL_HEADER -> GlobalHeaderViewHolder(inflater.inflate(R.layout.cell_header, parent, false))
+                VIEW_TYPE_GLOBAL_HEADER_1 -> GlobalHeaderViewHolder(inflater.inflate(R.layout.cell_header, parent, false))
+                VIEW_TYPE_GLOBAL_HEADER_2 -> GlobalHeaderViewHolder(inflater.inflate(R.layout.cell_header_2, parent, false))
                 VIEW_TYPE_GLOBAL_FOOTER -> GlobalFooterViewHolder(inflater.inflate(R.layout.cell_footer, parent, false))
                 VIEW_TYPE_SECTION_HEADER -> SectionHeaderViewHolder(inflater.inflate(R.layout.cell_header, parent, false))
                 VIEW_TYPE_SECTION_FOOTER -> SectionFooterViewHolder(inflater.inflate(R.layout.cell_footer, parent, false))
@@ -248,14 +249,12 @@ class ExampleActivityKotlin : AppCompatActivity() {
         inner class GlobalFooterViewHolder(view: View) : BaseViewHolder(view) {
             init {
                 with(itemView) {
+                    itemHeader.text = "Global Footer"
                     setOnClickListener {
                         collapseAllSections()
+                        notifyGlobalFooterChanged(0, "BORK")
                     }
                 }
-            }
-
-            override fun bind(adapterPosition: Int) {
-                itemView.itemHeader.text = "Global Footer"
             }
 
             override fun partialBind(adapterPosition: Int, payloads: MutableList<Any>) {
