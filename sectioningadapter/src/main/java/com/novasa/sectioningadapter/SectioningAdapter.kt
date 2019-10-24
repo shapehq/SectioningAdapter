@@ -1291,7 +1291,6 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      * @param id The global header id.
      */
     fun removeGlobalHeader(id: Int) {
-
         val index = globalHeaders.indexOfKey(id)
         if (index >= 0) {
             globalHeaders.remove(id)
@@ -1309,12 +1308,17 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      * @param payload The payload to send to the view holder. It will be received in the [BaseViewHolder.partialBind] function.
      */
     fun notifyGlobalHeaderChanged(id: Int, payload: Any? = null) {
-
         globalHeaders.get(id)?.let {
             it.setHasPendingChange(payload)
             submitUpdate()
         }
     }
+
+    /**
+     * @param id The global footer id.
+     * @return true if the adapter currently contains a footer with the specified id.
+     */
+    fun hasGlobalFooter(id: Int) = globalFooters.get(id) != null
 
     /**
      * Insert a global footer in the adapter.
@@ -1379,6 +1383,12 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
         submitUpdate()
     }
+
+    /**
+     * @param id The global header id.
+     * @return true if the adapter currently contains a header with the specified id.
+     */
+    fun hasGlobalHeader(id: Int) = globalHeaders.get(id) != null
 
     private val globalFooterStartPosition: Int
         get() = globalHeaderCount + globalSectionsSize + globalNonItemContentSize
