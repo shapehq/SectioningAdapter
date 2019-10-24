@@ -3,6 +3,7 @@ package com.novasa.sectioningadapter
 import android.content.Context
 import android.os.Handler
 import android.os.SystemClock
+import android.util.SparseArray
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.*
@@ -139,7 +140,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         override fun toString(): String = "Wrapper: ${item ?: nonItem ?: "empty"}"
     }
 
-    private class NonItem(val type: Int, var viewType: Int, val sectionKey: Any, var position: Int) {
+    private class NonItem(val type: Int, var viewType: Int, val sectionKey: Any, var id: Int) {
 
         companion object {
             const val TYPE_HEADER = 1
@@ -168,17 +169,17 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         fun isEqualTo(other: NonItem): Boolean = other.type == this.type &&
                 other.viewType == this.viewType &&
                 other.sectionKey == this.sectionKey &&
-                other.position == this.position
+                other.id == this.id
 
-        override fun toString(): String = "NonItem type: $type, viewType: $viewType, sectionKey: $sectionKey, pos: $position"
+        override fun toString(): String = "NonItem type: $type, viewType: $viewType, sectionKey: $sectionKey, sort: $id"
     }
 
     private val content = ArrayList<Wrapper<TItem>>()
 
     private var submittedContent = Collections.emptyList<Wrapper<TItem>>()
 
-    private val globalHeaders = ArrayList<NonItem>()
-    private val globalFooters = ArrayList<NonItem>()
+    private val globalHeaders = SparseArray<NonItem>()
+    private val globalFooters = SparseArray<NonItem>()
 
     private val sections = ArrayList<Section>()
     private val sectionsMap = HashMap<TSectionKey, Section>()
@@ -448,7 +449,8 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
             clear()
 
-            for (header: NonItem in globalHeaders) {
+            for (i in 0 until globalHeaders.size()) {
+                val header = globalHeaders.valueAt(i)
                 add(createWrapper(header))
             }
 
@@ -484,7 +486,8 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
                 globalNoContentVisible = true
             }
 
-            for (footer: NonItem in globalFooters) {
+            for (i in 0 until globalFooters.size()) {
+                val footer = globalFooters.valueAt(i)
                 add(createWrapper(footer))
             }
         }
@@ -1236,15 +1239,15 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     // endregion
 
 
-    // region Headers / Footers
+    // region Global Headers / Footers
 
     /** The current number of global headers. */
     val globalHeaderCount: Int
-        get() = globalHeaders.size
+        get() = globalHeaders.size()
 
     /** The current number of global footers. */
     val globalFooterCount: Int
-        get() = globalFooters.size
+        get() = globalFooters.size()
 
     val globalNonItemContentSize: Int
         get() = if (globalNoContentVisible) 1 else 0
@@ -1254,21 +1257,30 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      *
      * Global headers are displayed before the first section.
      *
-     * @param position The global header position. This is relative to any current global headers. Must be in the range 0 - [globalHeaderCount] (inclusive)]
+     * @param id A unique id that doubles as sorting order.
+     * If another header is added with the same id, the current one will be overridden.
      * @param viewType The view type of the global header, when supplied in [onCreateViewHolder]
      * @see [onCreateViewHolder]
      */
-    fun insertGlobalHeader(position: Int, viewType: Int) {
-        require(position in 0..globalHeaderCount) {
-            "Failed to insert global header. Invalid position: $position. Current global header count was $globalHeaderCount"
+    fun insertGlobalHeader(id: Int, viewType: Int) {
+
+        val header = NonItem(NonItem.TYPE_HEADER, viewType, GlobalSectionKey, id)
+        val pSize = globalHeaders.size()
+        var index = globalHeaders.indexOfKey(id)
+
+        globalHeaders.put(id, header)
+
+        if (index >= 0) {
+            content.removeAt(index)
+
+        } else {
+            // SparseArray guarantees ordered keys! Thanks SparseArray!
+            index = globalHeaders.indexOfKey(id)
         }
 
-        val header = NonItem(NonItem.TYPE_HEADER, viewType, GlobalSectionKey, position)
+        content.add(index, createWrapper(header))
 
-        globalHeaders.add(position, header)
-        content.add(position, createWrapper(header))
-
-        offsetSectionPositions(1)
+        offsetSectionPositions(globalHeaders.size() - pSize)
 
         submitUpdate()
     }
@@ -1276,17 +1288,16 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     /**
      * Remove any currently displayed global header.
      *
-     * @param position The global header position. Must be in the range 0 - [globalHeaderCount] (exclusive)
+     * @param id The global header id.
      */
-    fun removeGlobalHeader(position: Int) {
-        require(position in 0 until globalHeaderCount) {
-            "Failed to remove global header. Invalid position: $position. Current global header count was $globalHeaderCount"
+    fun removeGlobalHeader(id: Int) {
+
+        val index = globalHeaders.indexOfKey(id)
+        if (index >= 0) {
+            globalHeaders.remove(id)
+            content.removeAt(index)
+            offsetSectionPositions(-1)
         }
-
-        globalHeaders.removeAt(position)
-        content.removeAt(position)
-
-        offsetSectionPositions(-1)
 
         submitUpdate()
     }
@@ -1294,17 +1305,15 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     /**
      * Send a view update to a global header.
      *
-     * @param position The global header position. Must be in the range 0 - [globalHeaderCount] (exclusive)
+     * @param id The global header id.
      * @param payload The payload to send to the view holder. It will be received in the [BaseViewHolder.partialBind] function.
      */
-    fun notifyGlobalHeaderChanged(position: Int, payload: Any? = null) {
-        require(position in 0 until globalHeaderCount) {
-            "Failed to update global header. Invalid position: $position. Current global header count was $globalHeaderCount"
+    fun notifyGlobalHeaderChanged(id: Int, payload: Any? = null) {
+
+        globalHeaders.get(id)?.let {
+            it.setHasPendingChange(payload)
+            submitUpdate()
         }
-
-        globalHeaders[position].setHasPendingChange(payload)
-
-        submitUpdate()
     }
 
     /**
@@ -1312,19 +1321,27 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      *
      * Global footers are displayed after the final section.
      *
-     * @param position The global footer position. This is relative to any current global footers. Must be in the range 0 - [globalFooterCount] (inclusive)
+     * @param id A unique id that doubles as sorting order.
+     * If another footer is added with the same id, the current one will be overridden.
      * @param viewType The view type of the global footer, when supplied in [onCreateViewHolder]
      * @see [onCreateViewHolder]
      */
-    fun insertGlobalFooter(position: Int, viewType: Int) {
-        require(position in 0..globalFooterCount) {
-            "Failed to insert global footer. Invalid position: $position. Current global footer count was $globalFooterCount"
+    fun insertGlobalFooter(id: Int, viewType: Int) {
+
+        val footer = NonItem(NonItem.TYPE_HEADER, viewType, GlobalSectionKey, id)
+        val offset = globalFooterStartPosition
+        var index = globalFooters.indexOfKey(id)
+
+        globalFooters.put(id, footer)
+
+        if (index >= 0) {
+            content.removeAt(offset + index)
+
+        } else {
+            index = globalFooters.indexOfKey(id)
         }
 
-        val footer = NonItem(NonItem.TYPE_FOOTER, viewType, GlobalSectionKey, position)
-
-        globalFooters.add(position, footer)
-        content.add(globalHeaderCount + globalSectionsSize + globalNonItemContentSize + position, createWrapper(footer))
+        content.add(index + offset, createWrapper(footer))
 
         submitUpdate()
     }
@@ -1332,15 +1349,17 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     /**
      * Remove any currently displayed global footer.
      *
-     * @param position The global footer position. Must be in the range 0 - [globalFooterCount] (exclusive)
+     * @param id The global footer id.
      */
-    fun removeGlobalFooter(position: Int) {
-        require(position in 0 until globalFooterCount) {
-            "Failed to remove global footer. Invalid position: $position. Current global footer count was $globalFooterCount"
-        }
+    fun removeGlobalFooter(id: Int) {
 
-        globalFooters.removeAt(position)
-        content.removeAt(globalFooterStartPosition + position)
+        val offset = globalFooterStartPosition
+        val index = globalFooters.indexOfKey(id)
+
+        if (index >= 0) {
+            globalFooters.remove(id)
+            content.removeAt(offset + index)
+        }
 
         submitUpdate()
     }
@@ -1348,15 +1367,15 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     /**
      * Send a view update to a global footer.
      *
-     * @param position The global footer position. Must be in the range 0 - [globalFooterCount] (exclusive)
+     * @param id The global footer id.
      * @param payload The payload to send to the view holder. It will be received in the [BaseViewHolder.partialBind] function.
      */
-    fun notifyGlobalFooterChanged(position: Int, payload: Any? = null) {
-        require(position in 0 until globalFooterCount) {
-            "Failed to update global footer. Invalid position: $position. Current global footer count was $globalFooterCount"
+    fun notifyGlobalFooterChanged(id: Int, payload: Any? = null) {
+        require(id in 0 until globalFooterCount) {
+            "Failed to update global footer. Invalid position: $id. Current global footer count was $globalFooterCount"
         }
 
-        globalFooters[position].setHasPendingChange(payload)
+        globalFooters[id].setHasPendingChange(payload)
 
         submitUpdate()
     }
@@ -1367,7 +1386,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     // endregion
 
 
-    // region No content
+    // region Global no content
 
     /**
      * Override and return true if the adapter should display a view indicating that the adapter is empty.
