@@ -33,7 +33,9 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     private val differItemCallback = object : DiffUtil.ItemCallback<Wrapper<TItem>>() {
 
         override fun areItemsTheSame(oldItem: Wrapper<TItem>, newItem: Wrapper<TItem>): Boolean =
-            let(oldItem.item, newItem.item) { o, n ->
+            // If the item has a new viewtype, it must always be rebound.
+            // This is necessary for when an item moves to a new section that has a different view type, without actually changing.
+            oldItem.viewType == newItem.viewType && let(oldItem.item, newItem.item) { o, n ->
                 areItemsTheSame(o, n)
 
             } ?: let(oldItem.nonItem, newItem.nonItem) { o, n ->
