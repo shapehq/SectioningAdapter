@@ -208,7 +208,6 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      * Add items to the current data set.
      *
      * Similar to [setItems], but does not remove current items first.
-     * @param items
      */
     fun addItems(items: Collection<TItem>) {
         for (item in items) {
@@ -225,10 +224,30 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     }
 
     /**
+     * Add a single item to the current data set.
+     */
+    fun addItem(item: TItem) {
+        getSectionKeyForItem(item)?.let { key ->
+            val section = sectionsMap.getOrPut(key) {
+                createSection(key)
+            }
+
+            section.items.add(item)
+        }
+
+        updateSections()
+    }
+
+    /**
      * Refresh all content in the adapter.
      */
     fun refresh() {
         setItems(getAllItems())
+    }
+
+    fun updateItem(item: TItem) {
+        removeSingleItem(item)
+        addItem(item)
     }
 
     /**
@@ -239,6 +258,16 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         val set = HashSet(items)
         removeItemsIf { item ->
             set.contains(item)
+        }
+    }
+
+    /**
+     * Remove a single item from the adapter.
+     * @param item The item to remove.
+     */
+    fun removeItem(item: TItem) {
+        if (removeSingleItem(item)) {
+            updateSections()
         }
     }
 
@@ -395,6 +424,15 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         if (pos >= 0) {
             notifyItemChanged(pos, payload)
         }
+    }
+
+    private fun removeSingleItem(item: TItem): Boolean {
+        for (section in sections) {
+            if (section.items.remove(item)) {
+                return true
+            }
+        }
+        return false
     }
 
     private fun updateSections() {
@@ -1014,7 +1052,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     /**
      * Similar to [removeSection], but does not remove the section if it is static.
      *
-     * If the section is static, this behaves identically to the former.
+     * If the section is not static, this behaves identically to the former.
      */
     fun removeItemsInSection(key: TSectionKey) {
         sectionsMap[key]?.let { section ->
