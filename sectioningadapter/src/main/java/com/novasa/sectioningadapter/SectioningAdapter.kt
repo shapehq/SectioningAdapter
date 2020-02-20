@@ -1495,7 +1495,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
         if (::viewHolderConfigs.isInitialized) {
             for (config in viewHolderConfigs) {
-                config.onCreateViewHolder(holder, context, parent, viewType)
+                config.onCreateViewHolder(this, holder, context, parent, viewType)
             }
         }
 
@@ -1509,7 +1509,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
         if (::viewHolderConfigs.isInitialized) {
             for (config in viewHolderConfigs) {
-                config.onBindViewHolder(holder, holder.itemView.context, position)
+                config.onBindViewHolder(this, holder, holder.itemView.context, position)
             }
         }
     }
@@ -1520,7 +1520,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
             if (::viewHolderConfigs.isInitialized) {
                 for (config in viewHolderConfigs) {
-                    config.onBindViewHolder(holder, holder.itemView.context, position, payloads)
+                    config.onBindViewHolder(this, holder, holder.itemView.context, position, payloads)
                 }
             }
 
@@ -1529,12 +1529,28 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         }
     }
 
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        if (::viewHolderConfigs.isInitialized) {
+            for (config in viewHolderConfigs) {
+                config.onAdapterAttachedToRecyclerView(this, recyclerView)
+            }
+        }
+    }
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        if (::viewHolderConfigs.isInitialized) {
+            for (config in viewHolderConfigs) {
+                config.onAdapterDetachedFromRecyclerView(this, recyclerView)
+            }
+        }
+    }
+
     override fun onViewAttachedToWindow(holder: BaseViewHolder) {
         holder.onAttachedToWindow()
 
         if (::viewHolderConfigs.isInitialized) {
             for (config in viewHolderConfigs) {
-                config.onAttachViewHolder(holder, holder.itemView.context)
+                config.onAttachViewHolder(this, holder, holder.itemView.context)
             }
         }
     }
@@ -1544,7 +1560,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
         if (::viewHolderConfigs.isInitialized) {
             for (config in viewHolderConfigs) {
-                config.onDetachViewHolder(holder, holder.itemView.context)
+                config.onDetachViewHolder(this, holder, holder.itemView.context)
             }
         }
     }
