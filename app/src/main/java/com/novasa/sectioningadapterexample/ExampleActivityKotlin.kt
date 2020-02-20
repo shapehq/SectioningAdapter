@@ -165,11 +165,11 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
             addViewHolderConfig(object : ViewHolderConfigDefault() {
 
-                override fun onAttachViewHolder(holder: BaseViewHolder, context: Context) {
+                override fun onAttachViewHolder(adapter: SectioningAdapter<*, *>, holder: BaseViewHolder, context: Context) {
                     Log.d(TAG, "onAttachViewHolder")
                 }
 
-                override fun onDetachViewHolder(holder: BaseViewHolder, context: Context) {
+                override fun onDetachViewHolder(adapter: SectioningAdapter<*, *>, holder: BaseViewHolder, context: Context) {
                     Log.d(TAG, "onDetachViewHolder")
                 }
             })
