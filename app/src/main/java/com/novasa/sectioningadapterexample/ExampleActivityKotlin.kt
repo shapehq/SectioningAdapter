@@ -10,7 +10,7 @@ import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.novasa.sectioningadapter.SectioningAdapter
-import com.novasa.sectioningadapter.ViewHolderConfig
+import com.novasa.sectioningadapter.ViewHolderConfigDefault
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.cell_header.view.*
 import kotlinx.android.synthetic.main.cell_item.view.*
@@ -163,9 +163,14 @@ class ExampleActivityKotlin : AppCompatActivity() {
         init {
             collapseNewSections = false
 
-            addViewHolderConfig(object : ViewHolderConfig {
-                override fun onCreateViewHolder(holder: BaseViewHolder, context: Context, parent: ViewGroup, viewType: Int) {
+            addViewHolderConfig(object : ViewHolderConfigDefault() {
 
+                override fun onAttachViewHolder(holder: BaseViewHolder, context: Context) {
+                    Log.d(TAG, "onAttachViewHolder")
+                }
+
+                override fun onDetachViewHolder(holder: BaseViewHolder, context: Context) {
+                    Log.d(TAG, "onDetachViewHolder")
                 }
             })
         }

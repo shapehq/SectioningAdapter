@@ -7,12 +7,7 @@ import android.util.SparseArray
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.*
-import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.Comparator
-import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
-import kotlin.collections.HashSet
 
 @Suppress("MemberVisibilityCanBePrivate", "unused", "SameParameterValue")
 abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.Adapter<SectioningAdapter.BaseViewHolder>() {
@@ -178,7 +173,8 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
     private val content = ArrayList<Wrapper<TItem>>()
 
-    private var submittedContent = Collections.emptyList<Wrapper<TItem>>()
+    private val currentContent: List<Wrapper<TItem>>
+        get() = differ.currentList
 
     private val globalHeaders = SparseArray<NonItem>()
     private val globalFooters = SparseArray<NonItem>()
@@ -546,8 +542,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
             onContentWillChange()
 
-            submittedContent = ArrayList(content)
-            differ.submitList(submittedContent)
+            differ.submitList(ArrayList(content))
         }
     }
 
@@ -1490,9 +1485,9 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
     // region Adapter overrides
 
-    final override fun getItemCount(): Int = submittedContent.size
+    final override fun getItemCount(): Int = currentContent.size
 
-    final override fun getItemViewType(position: Int): Int = submittedContent[position].viewType
+    final override fun getItemViewType(position: Int): Int = currentContent[position].viewType
 
     final override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BaseViewHolder {
         val context = parent.context
@@ -1511,11 +1506,23 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
     override fun onBindViewHolder(holder: BaseViewHolder, position: Int) {
         holder.bind(position)
+
+        if (::viewHolderConfigs.isInitialized) {
+            for (config in viewHolderConfigs) {
+                config.onBindViewHolder(holder, holder.itemView.context, position)
+            }
+        }
     }
 
     override fun onBindViewHolder(holder: BaseViewHolder, position: Int, payloads: MutableList<Any>) {
         if (payloads.isNotEmpty()) {
             holder.partialBind(position, payloads)
+
+            if (::viewHolderConfigs.isInitialized) {
+                for (config in viewHolderConfigs) {
+                    config.onBindViewHolder(holder, holder.itemView.context, position, payloads)
+                }
+            }
 
         } else {
             super.onBindViewHolder(holder, position, payloads)
@@ -1524,10 +1531,22 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
     override fun onViewAttachedToWindow(holder: BaseViewHolder) {
         holder.onAttachedToWindow()
+
+        if (::viewHolderConfigs.isInitialized) {
+            for (config in viewHolderConfigs) {
+                config.onAttachViewHolder(holder, holder.itemView.context)
+            }
+        }
     }
 
     override fun onViewDetachedFromWindow(holder: BaseViewHolder) {
         holder.onDetachedFromWindow()
+
+        if (::viewHolderConfigs.isInitialized) {
+            for (config in viewHolderConfigs) {
+                config.onDetachViewHolder(holder, holder.itemView.context)
+            }
+        }
     }
 
     // endregion
