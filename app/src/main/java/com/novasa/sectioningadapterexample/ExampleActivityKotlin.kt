@@ -9,6 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.novasa.sectioningadapter.SectioningAdapter
 import com.novasa.sectioningadapter.ViewHolderConfigDefault
 import kotlinx.android.synthetic.main.activity_main.*
@@ -165,11 +166,11 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
             addViewHolderConfig(object : ViewHolderConfigDefault() {
 
-                override fun onAttachViewHolder(adapter: SectioningAdapter<*, *>, holder: BaseViewHolder, context: Context) {
+                override fun onAttachViewHolder(adapter: RecyclerView.Adapter<*>, holder: RecyclerView.ViewHolder, context: Context) {
                     Log.d(TAG, "onAttachViewHolder")
                 }
 
-                override fun onDetachViewHolder(adapter: SectioningAdapter<*, *>, holder: BaseViewHolder, context: Context) {
+                override fun onDetachViewHolder(adapter: RecyclerView.Adapter<*>, holder: RecyclerView.ViewHolder, context: Context) {
                     Log.d(TAG, "onDetachViewHolder")
                 }
             })
