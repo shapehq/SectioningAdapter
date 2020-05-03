@@ -1,4 +1,4 @@
-package com.novasa.sectioningadapterexample;
+package com.novasa.sectioningadapterexample.app;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.novasa.sectioningadapter.SectioningAdapter;
+import com.novasa.sectioningadapterexample.R;
 
 import org.jetbrains.annotations.NotNull;
 

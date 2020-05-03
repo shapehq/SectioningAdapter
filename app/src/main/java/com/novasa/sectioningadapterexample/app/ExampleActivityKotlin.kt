@@ -1,4 +1,4 @@
-package com.novasa.sectioningadapterexample
+package com.novasa.sectioningadapterexample.app
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -9,15 +9,19 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.novasa.sectioningadapter.SectioningAdapter
-import com.novasa.sectioningadapter.ViewHolderConfigDefault
+import com.novasa.sectioningadapterexample.R
+import com.novasa.sectioningadapterexample.data.DataSource
+import com.novasa.sectioningadapterexample.data.Item
+import dagger.android.AndroidInjection
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.rxkotlin.plusAssign
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.cell_header.view.*
 import kotlinx.android.synthetic.main.cell_item.view.*
 import kotlinx.android.synthetic.main.cell_no_content.view.*
 import java.util.ArrayList
-import kotlin.Comparator
+import javax.inject.Inject
 import kotlin.random.Random
 
 @SuppressLint("SetTextI18n")
@@ -26,8 +30,6 @@ class ExampleActivityKotlin : AppCompatActivity() {
     companion object {
         private const val TAG = "SectioningAdapter"
 
-        private const val ITEM_COUNT = 10
-        private const val SECTION_COUNT = 10
 
         private const val VIEW_TYPE_ITEM = 1
         private const val VIEW_TYPE_SECTION_HEADER = 2
@@ -41,24 +43,23 @@ class ExampleActivityKotlin : AppCompatActivity() {
         private const val UPDATE_INCREMENT = "update_increment"
     }
 
-    private val rng = Random(0)
 
     private val items = ArrayList<Item>().also {
-        for (i in 1..ITEM_COUNT) {
-            it.add(Item(i, rng.nextInt(SECTION_COUNT) + 1))
-        }
+
     }
 
-    private val items2 = ArrayList<Item>().also {
-        for (i in ITEM_COUNT + 1..ITEM_COUNT + 5) {
-            it.add(Item(i, rng.nextInt(SECTION_COUNT) + 1))
-        }
-    }
+    private val disposables = CompositeDisposable()
+
+    @Inject
+    lateinit var dataSource: DataSource
 
     private val sectioningAdapter = Adapter()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        AndroidInjection.inject(this)
+
         setContentView(R.layout.activity_main)
 
         val context = this
@@ -68,19 +69,21 @@ class ExampleActivityKotlin : AppCompatActivity() {
             adapter = sectioningAdapter
         }
 
-        with (sectioningAdapter) {
+        with(sectioningAdapter) {
             insertGlobalHeader(1, VIEW_TYPE_GLOBAL_HEADER_2)
             insertGlobalHeader(0, VIEW_TYPE_GLOBAL_HEADER_1)
             insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
             insertGlobalFooter(1, VIEW_TYPE_GLOBAL_FOOTER)
 
-            addStaticSections(listOf(1, 2, 3, 4, 5))
-            setItems(items)
+//            addStaticSections(listOf(1, 2, 3, 4, 5))
 
             insertGlobalHeader(0, VIEW_TYPE_GLOBAL_HEADER_1)
             insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
             insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
         }
+
+        disposables += dataSource.data()
+            .subscribe(sectioningAdapter::setItems)
 
         buttonShuffle.setOnClickListener {
             shuffle()
@@ -101,39 +104,40 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
     private fun shuffle() {
 
-        items.forEach {
-            it.section = rng.nextInt(SECTION_COUNT) + 1
-        }
-
-        sectioningAdapter.setItems(items)
-
-        val allItems = sectioningAdapter.getAllItems()
-
-        assert(allItems.size == items.size)
-
-        val sorted: List<Item> = items.sortedWith(Comparator { o1, o2 ->
-            when {
-                o1.section < o2.section -> -1
-                o1.section > o2.section -> 1
-                o1.id < o2.id -> -1
-                o1.id > o2.id -> 1
-                else -> 0
-            }
-        })
-
-        val sb = StringBuilder()
-        var sec = -1
-        sorted.forEachIndexed { index, item ->
-            if (sec < item.section) {
-                sec = item.section
-                sb.append("\nSECTION $sec")
-            }
-            sb.append("\n- Item $item, from adapter: ${allItems[index]}")
-
-            assert(item.id == allItems[index].id)
-        }
-
-        Log.d(TAG, sb.toString())
+//        items.forEach {
+//            it.section = rng.nextInt(SECTION_COUNT) + 1
+//        }
+//
+//        sectioningAdapter.forceRebindItemsNext()
+//        sectioningAdapter.setItems(items)
+//
+//        val allItems = sectioningAdapter.getAllItems()
+//
+//        assert(allItems.size == items.size)
+//
+//        val sorted: List<Item> = items.sortedWith(Comparator { o1, o2 ->
+//            when {
+//                o1.section < o2.section -> -1
+//                o1.section > o2.section -> 1
+//                o1.id < o2.id -> -1
+//                o1.id > o2.id -> 1
+//                else -> 0
+//            }
+//        })
+//
+//        val sb = StringBuilder()
+//        var sec = -1
+//        sorted.forEachIndexed { index, item ->
+//            if (sec < item.section) {
+//                sec = item.section
+//                sb.append("\nSECTION $sec")
+//            }
+//            sb.append("\n- Item $item, from adapter: ${allItems[index]}")
+//
+//            assert(item.id == allItems[index].id)
+//        }
+//
+//        Log.d(TAG, sb.toString())
     }
 
     private fun setItems() {
@@ -157,23 +161,10 @@ class ExampleActivityKotlin : AppCompatActivity() {
         sectioningAdapter.removeAllItems()
     }
 
-    data class Item(var id: Int, var section: Int)
-
     class Adapter : SectioningAdapter<Item, Int>() {
 
         init {
             collapseNewSections = false
-
-            addViewHolderConfig(object : ViewHolderConfigDefault() {
-
-                override fun onAttachViewHolder(adapter: RecyclerView.Adapter<*>, holder: RecyclerView.ViewHolder, context: Context) {
-                    Log.d(TAG, "onAttachViewHolder")
-                }
-
-                override fun onDetachViewHolder(adapter: RecyclerView.Adapter<*>, holder: RecyclerView.ViewHolder, context: Context) {
-                    Log.d(TAG, "onDetachViewHolder")
-                }
-            })
         }
 
         override fun onContentChanged() {
@@ -197,7 +188,11 @@ class ExampleActivityKotlin : AppCompatActivity() {
                 VIEW_TYPE_GLOBAL_FOOTER -> GlobalFooterViewHolder(inflater.inflate(R.layout.cell_footer, parent, false))
                 VIEW_TYPE_SECTION_HEADER -> SectionHeaderViewHolder(inflater.inflate(R.layout.cell_header, parent, false))
                 VIEW_TYPE_SECTION_FOOTER -> SectionFooterViewHolder(inflater.inflate(R.layout.cell_footer, parent, false))
-                VIEW_TYPE_SECTION_NO_CONTENT -> SectionNoContentViewHolder(inflater.inflate(R.layout.cell_no_content, parent, false))
+                VIEW_TYPE_SECTION_NO_CONTENT -> SectionNoContentViewHolder(
+                    inflater.inflate(
+                        R.layout.cell_no_content, parent, false
+                    )
+                )
                 VIEW_TYPE_ITEM -> ItemViewHolder(inflater.inflate(R.layout.cell_item, parent, false))
                 VIEW_TYPE_GLOBAL_NO_CONTENT -> BaseViewHolder(inflater.inflate(R.layout.cell_no_content, parent, false))
                 else -> throw IllegalArgumentException()
@@ -208,7 +203,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
         override fun getGlobalNoContentViewType(): Int = VIEW_TYPE_GLOBAL_NO_CONTENT
 
-        override fun getSectionKeyForItem(item: Item): Int? = if (item.section == 2) null  else item.section
+        override fun getSectionKeyForItem(item: Item): Int? = if (item.section == 2) null else item.section
 
         override fun getHeaderCountForSection(sectionKey: Int): Int = 1
 
@@ -216,13 +211,16 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
         override fun getItemViewTypeForSection(sectionKey: Int): Int = VIEW_TYPE_ITEM
 
-        override fun getHeaderViewTypeForSection(sectionKey: Int, headerIndex: Int): Int = VIEW_TYPE_SECTION_HEADER
+        override fun getHeaderViewTypeForSection(sectionKey: Int, headerIndex: Int): Int =
+            VIEW_TYPE_SECTION_HEADER
 
-        override fun getFooterViewTypeForSection(sectionKey: Int, footerIndex: Int): Int = VIEW_TYPE_SECTION_FOOTER
+        override fun getFooterViewTypeForSection(sectionKey: Int, footerIndex: Int): Int =
+            VIEW_TYPE_SECTION_FOOTER
 
         override fun showNoContentForStaticSection(sectionKey: Int): Boolean = true
 
-        override fun getNoContentViewTypeForStaticSection(sectionKey: Int): Int = VIEW_TYPE_SECTION_NO_CONTENT
+        override fun getNoContentViewTypeForStaticSection(sectionKey: Int): Int =
+            VIEW_TYPE_SECTION_NO_CONTENT
 
         override fun sortSections(): Boolean = true
 
@@ -312,7 +310,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
                 with(itemView) {
                     setOnClickListener {
                         getSectionKey()?.let {
-                            notifySectionNoContentChanged(it, " blugr")
+                            notifyStaticSectionNoContentChanged(it, " blugr")
                         }
                     }
                 }

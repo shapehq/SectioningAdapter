@@ -25,13 +25,24 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     private var updateInProgress = AtomicBoolean(false)
     private var pendingUpdate = AtomicBoolean(false)
 
+    private var forceRebindAllNext = false
+    private var forceRebindItemsNext = false
+
+    fun forceRebindAllNext() {
+        forceRebindAllNext = true
+    }
+
+    fun forceRebindItemsNext() {
+        forceRebindItemsNext = true
+    }
+
     private val differItemCallback = object : DiffUtil.ItemCallback<Wrapper<TItem>>() {
 
         override fun areItemsTheSame(oldItem: Wrapper<TItem>, newItem: Wrapper<TItem>): Boolean =
-            // If the item has a new viewtype, it must always be rebound.
+        // If the item has a new view type, it must always be rebound.
             // This is necessary for when an item moves to a new section that has a different view type, without actually changing.
-            oldItem.viewType == newItem.viewType && let(oldItem.item, newItem.item) { o, n ->
-                areItemsTheSame(o, n)
+            !forceRebindAllNext && oldItem.viewType == newItem.viewType && let(oldItem.item, newItem.item) { o, n ->
+                !forceRebindItemsNext && areItemsTheSame(o, n)
 
             } ?: let(oldItem.nonItem, newItem.nonItem) { o, n ->
                 o.isEqualTo(n)
@@ -46,6 +57,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
                 !n.hasPendingChange
 
             } ?: true
+
 
         override fun getChangePayload(oldItem: Wrapper<TItem>, newItem: Wrapper<TItem>): Any? =
             let(oldItem.item, newItem.item) { o, n ->
@@ -552,6 +564,9 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     }
 
     private fun onUpdateComplete() {
+        forceRebindAllNext = false
+        forceRebindItemsNext = false
+
         updateInProgress.set(false)
         mostRecentUpdateTime = SystemClock.elapsedRealtime() - diffTimeRef
 
@@ -912,7 +927,15 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     protected open fun getNoContentViewTypeForStaticSection(sectionKey: TSectionKey): Int =
         throw NotImplementedError("Must override getNoContentViewTypeForStaticSection() if showNoContentForStaticSection() return true.")
 
-    fun notifySectionNoContentChanged(sectionKey: TSectionKey, payload: Any? = null) {
+    fun refreshStaticSectionNoContent(sectionKey: TSectionKey) {
+        getSectionForKey(sectionKey)?.let { section ->
+            if (section.static && section.noContent != null != showNoContentForStaticSection(sectionKey) || section.noContent?.viewType != getNoContentViewTypeForStaticSection(sectionKey)) {
+                updateSections()
+            }
+        }
+    }
+
+    fun notifyStaticSectionNoContentChanged(sectionKey: TSectionKey, payload: Any? = null) {
         getSectionForKey(sectionKey)?.let { section ->
             section.noContent?.let {
                 it.setHasPendingChange(payload)
@@ -937,7 +960,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     }
 
     private fun itemComparator(key: TSectionKey): Comparator<TItem> = itemComparators.getOrPut(key) {
-        Comparator { o1, o2 ->
+        Comparator<TItem> { o1, o2 ->
             compareItems(key, o1, o2)
         }
     }
