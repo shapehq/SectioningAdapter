@@ -25,17 +25,6 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     private var updateInProgress = AtomicBoolean(false)
     private var pendingUpdate = AtomicBoolean(false)
 
-    private var forceRebindAllNext = false
-    private var forceRebindItemsNext = false
-
-    fun forceRebindAllNext() {
-        forceRebindAllNext = true
-    }
-
-    fun forceRebindItemsNext() {
-        forceRebindItemsNext = true
-    }
-
     private val differItemCallback = object : DiffUtil.ItemCallback<Wrapper<TItem>>() {
 
         override fun areItemsTheSame(oldItem: Wrapper<TItem>, newItem: Wrapper<TItem>): Boolean =
@@ -59,13 +48,15 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
             } ?: true
 
 
-        override fun getChangePayload(oldItem: Wrapper<TItem>, newItem: Wrapper<TItem>): Any? =
+        override fun getChangePayload(oldItem: Wrapper<TItem>, newItem: Wrapper<TItem>): Any? {
             let(oldItem.item, newItem.item) { o, n ->
-                getChangePayload(o, n)
-
-            } ?: let(oldItem.nonItem, newItem.nonItem) { _, n ->
-                n.consumePendingChange()
+                return getChangePayload(o, n)
             }
+            let(oldItem.nonItem, newItem.nonItem) { _, n ->
+                return n.consumePendingChange()
+            }
+            return null
+        }
     }
 
     private val listUpdateCallback = object : ListUpdateCallback {
@@ -427,12 +418,35 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         return -1
     }
 
+
+    // region Changes
+
+    private var forceRebindAllNext = false
+    private var forceRebindItemsNext = false
+
+    /**
+     * Forces all views to be rebound on the next update, even if they have no changes.
+     */
+    fun forceRebindAllNext() {
+        forceRebindAllNext = true
+    }
+
+    /**
+     * Forces all item views to be rebound on the next update, even if they have no changes.
+     */
+    fun forceRebindItemsNext() {
+        forceRebindItemsNext = true
+    }
+
     fun notifyItemChanged(item: TItem, payload: Any?) {
         val pos = findAdapterPositionForItem(item)
         if (pos >= 0) {
             notifyItemChanged(pos, payload)
         }
     }
+
+    // endregion
+
 
     private fun removeSingleItem(item: TItem): Boolean {
         for (section in sections) {
@@ -1103,7 +1117,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     /**
      * Add a static section. Static sections remain even if they have no items.
      *
-     * If the the section sectionKey is already associated with a section in the adapter, that section will become static.
+     * If the the section key is already associated with a section in the adapter, that section will become static.
      */
     fun addStaticSection(sectionKey: TSectionKey) {
         sectionsMap.getOrPut(sectionKey) {
