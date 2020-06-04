@@ -7,10 +7,19 @@ import android.util.SparseArray
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.*
+import java.lang.IllegalArgumentException
+import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.Comparator
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
+import kotlin.collections.HashSet
 
 @Suppress("MemberVisibilityCanBePrivate", "unused", "SameParameterValue")
 abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.Adapter<SectioningAdapter.BaseViewHolder>() {
+
+    private val name: String
+        get() = this.javaClass.name
 
     private object GlobalSectionKey {
         override fun toString(): String = "Global section key"
@@ -815,6 +824,12 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         }
 
         override fun toString(): String = "Key: $key, Index: $index, position: $adapterPosition, itemCount: $itemCount, size: $size, collapsed: $collapsed"
+
+        internal fun verifyItemPosition(itemPosition: Int) {
+            if (itemPosition < 0 || itemPosition >= items.size) {
+                throw IndexOutOfBoundsException("$name: Illegal item position ($itemPosition, size: $items.size) for section with key $key")
+            }
+        }
     }
 
     // region Keys
@@ -1520,6 +1535,15 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     // endregion
 
 
+    // region Initialization
+
+    init {
+        refreshContent()
+    }
+
+    // endregion
+
+
     // region Adapter overrides
 
     final override fun getItemCount(): Int = currentContent.size
@@ -1663,9 +1687,11 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         final override fun bind(adapterPosition: Int, sectionPosition: Int, sectionKey: TSectionKey) {
             getSectionForKey(sectionKey)?.let { section ->
                 val sectionItemPosition = sectionPosition - section.headerCount
+                section.verifyItemPosition(sectionItemPosition)
+
                 val item = section.items[sectionItemPosition]
                 bind(adapterPosition, sectionPosition, sectionItemPosition, sectionKey, item)
-            }
+            } ?: throw IllegalArgumentException("$name Tried to bind item in non existing section")
         }
 
         abstract fun bind(adapterPosition: Int, sectionPosition: Int, sectionItemPosition: Int, sectionKey: TSectionKey, item: TItem)
@@ -1673,9 +1699,11 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         final override fun partialBind(adapterPosition: Int, sectionPosition: Int, sectionKey: TSectionKey, payloads: MutableList<Any>) {
             getSectionForKey(sectionKey)?.let { section ->
                 val sectionItemPosition = sectionPosition - section.headerCount
+                section.verifyItemPosition(sectionItemPosition)
+
                 val item = section.items[sectionItemPosition]
                 partialBind(adapterPosition, sectionPosition, sectionItemPosition, sectionKey, item, payloads)
-            }
+            } ?: throw IllegalArgumentException("$name tried to partial bind item in non existing section")
         }
 
         open fun partialBind(adapterPosition: Int, sectionPosition: Int, sectionItemPosition: Int, sectionKey: TSectionKey, item: TItem, payloads: MutableList<Any>) {
@@ -1686,4 +1714,6 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     }
 
     // endregion
+
+
 }

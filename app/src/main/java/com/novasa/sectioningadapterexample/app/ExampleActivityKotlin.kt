@@ -70,16 +70,16 @@ class ExampleActivityKotlin : AppCompatActivity() {
         }
 
         with(sectioningAdapter) {
-            insertGlobalHeader(1, VIEW_TYPE_GLOBAL_HEADER_2)
-            insertGlobalHeader(0, VIEW_TYPE_GLOBAL_HEADER_1)
-            insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
-            insertGlobalFooter(1, VIEW_TYPE_GLOBAL_FOOTER)
-
-//            addStaticSections(listOf(1, 2, 3, 4, 5))
-
-            insertGlobalHeader(0, VIEW_TYPE_GLOBAL_HEADER_1)
-            insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
-            insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
+//            insertGlobalHeader(1, VIEW_TYPE_GLOBAL_HEADER_2)
+//            insertGlobalHeader(0, VIEW_TYPE_GLOBAL_HEADER_1)
+//            insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
+//            insertGlobalFooter(1, VIEW_TYPE_GLOBAL_FOOTER)
+//
+////            addStaticSections(listOf(1, 2, 3, 4, 5))
+//
+//            insertGlobalHeader(0, VIEW_TYPE_GLOBAL_HEADER_1)
+//            insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
+//            insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
         }
 
         disposables += dataSource.data()
@@ -199,7 +199,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
             }
         }
 
-        override fun showGlobalNoContent(): Boolean = false
+        override fun showGlobalNoContent(): Boolean = true
 
         override fun getGlobalNoContentViewType(): Int = VIEW_TYPE_GLOBAL_NO_CONTENT
 
