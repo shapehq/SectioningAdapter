@@ -20,6 +20,7 @@ import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.cell_header.view.*
 import kotlinx.android.synthetic.main.cell_item.view.*
 import kotlinx.android.synthetic.main.cell_no_content.view.*
+import java.lang.RuntimeException
 import java.util.ArrayList
 import javax.inject.Inject
 import kotlin.random.Random
@@ -70,23 +71,23 @@ class ExampleActivityKotlin : AppCompatActivity() {
         }
 
         with(sectioningAdapter) {
-//            insertGlobalHeader(1, VIEW_TYPE_GLOBAL_HEADER_2)
-//            insertGlobalHeader(0, VIEW_TYPE_GLOBAL_HEADER_1)
-//            insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
-//            insertGlobalFooter(1, VIEW_TYPE_GLOBAL_FOOTER)
-//
-////            addStaticSections(listOf(1, 2, 3, 4, 5))
-//
-//            insertGlobalHeader(0, VIEW_TYPE_GLOBAL_HEADER_1)
-//            insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
-//            insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
+            insertGlobalHeader(1, VIEW_TYPE_GLOBAL_HEADER_2)
+            insertGlobalHeader(0, VIEW_TYPE_GLOBAL_HEADER_1)
+            insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
+            insertGlobalFooter(1, VIEW_TYPE_GLOBAL_FOOTER)
+
+            addStaticSections(listOf(1, 2, 3, 4, 5))
+
+            insertGlobalHeader(0, VIEW_TYPE_GLOBAL_HEADER_1)
+            insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
+            insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
         }
 
         disposables += dataSource.data()
             .subscribe(sectioningAdapter::setItems)
 
         buttonShuffle.setOnClickListener {
-            shuffle()
+            throw RuntimeException(sectioningAdapter.state())
         }
 
         buttonSet.setOnClickListener {

@@ -827,7 +827,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
         internal fun verifyItemPosition(itemPosition: Int) {
             if (itemPosition < 0 || itemPosition >= items.size) {
-                throw IndexOutOfBoundsException("$name: Illegal item position ($itemPosition, size: $items.size) for section with key $key")
+                throw IndexOutOfBoundsException("Illegal item position ($itemPosition, size: $items.size) for section with key $key. ${state()}")
             }
         }
     }
@@ -1691,7 +1691,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
                 val item = section.items[sectionItemPosition]
                 bind(adapterPosition, sectionPosition, sectionItemPosition, sectionKey, item)
-            } ?: throw IllegalArgumentException("$name Tried to bind item in non existing section")
+            } ?: throw IllegalArgumentException("$name Tried to bind item in non existing section. ${state()}")
         }
 
         abstract fun bind(adapterPosition: Int, sectionPosition: Int, sectionItemPosition: Int, sectionKey: TSectionKey, item: TItem)
@@ -1703,7 +1703,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
                 val item = section.items[sectionItemPosition]
                 partialBind(adapterPosition, sectionPosition, sectionItemPosition, sectionKey, item, payloads)
-            } ?: throw IllegalArgumentException("$name tried to partial bind item in non existing section")
+            } ?: throw IllegalArgumentException("Tried to partial bind item in non existing section. ${state()}")
         }
 
         open fun partialBind(adapterPosition: Int, sectionPosition: Int, sectionItemPosition: Int, sectionKey: TSectionKey, item: TItem, payloads: MutableList<Any>) {
@@ -1716,4 +1716,31 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     // endregion
 
 
+    // region Logging
+
+    fun state(): String {
+        val sb = StringBuilder()
+            .appendln("Sectioning adapter state ($name)")
+            .appendln("- content size: ${content.size}")
+            .appendln("- submitted size: ${currentContent.size}")
+            .appendln("- section count: ${sections.size}")
+
+        for (section in sections) {
+            sb.appendln(" - section: ${section.key}")
+
+            for (item in section.items) {
+                sb.appendln("  - item: $item")
+            }
+        }
+
+        sb.appendln("Content:")
+
+        for (item in content) {
+            sb.appendln("- $item")
+        }
+
+        return sb.toString()
+    }
+
+    // endregion
 }
