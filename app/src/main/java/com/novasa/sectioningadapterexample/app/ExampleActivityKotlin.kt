@@ -20,6 +20,7 @@ import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.cell_header.view.*
 import kotlinx.android.synthetic.main.cell_item.view.*
 import kotlinx.android.synthetic.main.cell_no_content.view.*
+import java.lang.RuntimeException
 import java.util.ArrayList
 import javax.inject.Inject
 import kotlin.random.Random
@@ -43,10 +44,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
         private const val UPDATE_INCREMENT = "update_increment"
     }
 
-
-    private val items = ArrayList<Item>().also {
-
-    }
+    private val items = ArrayList<Item>()
 
     private val disposables = CompositeDisposable()
 
@@ -75,7 +73,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
             insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
             insertGlobalFooter(1, VIEW_TYPE_GLOBAL_FOOTER)
 
-//            addStaticSections(listOf(1, 2, 3, 4, 5))
+            addStaticSections(listOf(1, 2, 3, 4, 5))
 
             insertGlobalHeader(0, VIEW_TYPE_GLOBAL_HEADER_1)
             insertGlobalFooter(0, VIEW_TYPE_GLOBAL_FOOTER)
@@ -104,40 +102,13 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
     private fun shuffle() {
 
-//        items.forEach {
-//            it.section = rng.nextInt(SECTION_COUNT) + 1
-//        }
-//
-//        sectioningAdapter.forceRebindItemsNext()
-//        sectioningAdapter.setItems(items)
-//
-//        val allItems = sectioningAdapter.getAllItems()
-//
-//        assert(allItems.size == items.size)
-//
-//        val sorted: List<Item> = items.sortedWith(Comparator { o1, o2 ->
-//            when {
-//                o1.section < o2.section -> -1
-//                o1.section > o2.section -> 1
-//                o1.id < o2.id -> -1
-//                o1.id > o2.id -> 1
-//                else -> 0
-//            }
-//        })
-//
-//        val sb = StringBuilder()
-//        var sec = -1
-//        sorted.forEachIndexed { index, item ->
-//            if (sec < item.section) {
-//                sec = item.section
-//                sb.append("\nSECTION $sec")
-//            }
-//            sb.append("\n- Item $item, from adapter: ${allItems[index]}")
-//
-//            assert(item.id == allItems[index].id)
-//        }
-//
-//        Log.d(TAG, sb.toString())
+        val items = ArrayList(sectioningAdapter.getAllItems())
+        items.forEach {
+            it.section = Random.Default.nextInt(5) + 1
+        }
+
+        sectioningAdapter.forceRebindItemsNext()
+        sectioningAdapter.setItems(items)
     }
 
     private fun setItems() {
@@ -199,11 +170,11 @@ class ExampleActivityKotlin : AppCompatActivity() {
             }
         }
 
-        override fun showGlobalNoContent(): Boolean = false
+        override fun showGlobalNoContent(): Boolean = true
 
         override fun getGlobalNoContentViewType(): Int = VIEW_TYPE_GLOBAL_NO_CONTENT
 
-        override fun getSectionKeyForItem(item: Item): Int? = if (item.section == 2) null else item.section
+        override fun getSectionKeyForItem(item: Item): Int? = item.section
 
         override fun getHeaderCountForSection(sectionKey: Int): Int = 1
 
@@ -282,13 +253,13 @@ class ExampleActivityKotlin : AppCompatActivity() {
                 }
             }
 
-            override fun bind(adapterPosition: Int, sectionPosition: Int, sectionKey: Int) {
+            override fun bind(adapterPosition: Int, sectionKey: Int) {
                 with(itemView) {
                     itemHeader.text = "Section $sectionKey"
                 }
             }
 
-            override fun partialBind(adapterPosition: Int, sectionPosition: Int, sectionKey: Int, payloads: MutableList<Any>) {
+            override fun partialBind(adapterPosition: Int, sectionKey: Int, payloads: MutableList<Any>) {
                 if (payloads.isNotEmpty()) {
                     itemView.itemHeader.text = payloads.first().toString()
                 }
@@ -297,7 +268,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
         inner class SectionFooterViewHolder(view: View) : SectionViewHolder(view) {
 
-            override fun bind(adapterPosition: Int, sectionPosition: Int, sectionKey: Int) {
+            override fun bind(adapterPosition: Int, sectionKey: Int) {
                 with(itemView) {
                     itemHeader.text = "Total item count: ${getItemCountForSection(sectionKey)}"
                 }
@@ -316,13 +287,13 @@ class ExampleActivityKotlin : AppCompatActivity() {
                 }
             }
 
-            override fun bind(adapterPosition: Int, sectionPosition: Int, sectionKey: Int) {
+            override fun bind(adapterPosition: Int, sectionKey: Int) {
                 with(itemView) {
                     noContent.text = "Section $sectionKey is empty"
                 }
             }
 
-            override fun partialBind(adapterPosition: Int, sectionPosition: Int, sectionKey: Int, payloads: MutableList<Any>) {
+            override fun partialBind(adapterPosition: Int, sectionKey: Int, payloads: MutableList<Any>) {
                 with(itemView) {
                     if (payloads.isNotEmpty()) {
                         noContent.text = noContent.text.toString() + payloads.first().toString()
@@ -342,13 +313,13 @@ class ExampleActivityKotlin : AppCompatActivity() {
                 }
             }
 
-            override fun bind(adapterPosition: Int, sectionPosition: Int, sectionItemPosition: Int, sectionKey: Int, item: Item) {
+            override fun bind(adapterPosition: Int, sectionKey: Int, item: Item) {
                 with(itemView) {
                     itemTitle.text = "[${item.section}] Item ${item.id}"
                 }
             }
 
-            override fun partialBind(adapterPosition: Int, sectionPosition: Int, sectionItemPosition: Int, sectionKey: Int, item: Item, payloads: MutableList<Any>) {
+            override fun partialBind(adapterPosition: Int, sectionKey: Int, item: Item, payloads: MutableList<Any>) {
                 with(itemView) {
                     payloads.forEach {
                         when (it) {

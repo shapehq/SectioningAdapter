@@ -108,7 +108,7 @@ public class ExampleActivityJava extends AppCompatActivity {
 
             @SuppressLint("DefaultLocale")
             @Override
-            public void bind(int adapterPosition, int sectionPosition, int sectionItemPosition, @NotNull Integer integer, @NotNull Item item) {
+            public void bind(int adapterPosition, @NotNull Integer integer, @NotNull Item item) {
                 title.setText(String.format("Item: %d, section: %d", item.id, item.section));
             }
 
