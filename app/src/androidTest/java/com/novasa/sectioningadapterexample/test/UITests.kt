@@ -8,12 +8,12 @@ import com.novasa.sectioningadapterexample.app.ExampleActivityKotlin
 import com.novasa.sectioningadapterexample.app.TestApplication
 import com.novasa.sectioningadapterexample.data.DataSource
 import com.novasa.sectioningadapterexample.data.Item
+import io.mockk.every
 import io.reactivex.subjects.PublishSubject
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.mockito.Mockito.`when`
 import javax.inject.Inject
 
 @RunWith(AndroidJUnit4::class)
@@ -37,7 +37,7 @@ class UITests {
 
     @Before
     fun setup() {
-        `when`(dataSource.data()).thenReturn(publisher)
+        every { dataSource.data() } returns publisher
     }
 
     @Test

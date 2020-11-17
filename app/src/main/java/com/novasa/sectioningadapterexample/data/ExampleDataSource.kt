@@ -13,9 +13,9 @@ class ExampleDataSource @Inject constructor() : DataSource {
 
     private val rng = Random(0)
 
-    override fun data(): Observable<List<Item>> = Observable.just(ArrayList<Item>().also {
+    override fun data(): Observable<Data> = Observable.just(Data(ArrayList<Item>().also {
         for (i in 1..ITEM_COUNT) {
             it.add(Item(i, rng.nextInt(SECTION_COUNT) + 1))
         }
-    })
+    }))
 }

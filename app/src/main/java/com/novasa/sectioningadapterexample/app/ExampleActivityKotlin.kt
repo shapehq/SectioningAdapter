@@ -81,7 +81,11 @@ class ExampleActivityKotlin : AppCompatActivity() {
         }
 
         disposables += dataSource.data()
-            .subscribe(sectioningAdapter::setItems)
+            .subscribe { data ->
+                for (s in data.static) {
+                    sectioningAdapter.state
+                }
+            }
 
         buttonShuffle.setOnClickListener {
             shuffle()
@@ -150,22 +154,68 @@ class ExampleActivityKotlin : AppCompatActivity() {
             return super.areContentsTheSame(oldItem, newItem)
         }
 
-        override fun onCreateViewHolder(context: Context, parent: ViewGroup, viewType: Int): BaseViewHolder {
+        override fun onCreateViewHolder(
+            context: Context,
+            parent: ViewGroup,
+            viewType: Int
+        ): BaseViewHolder {
             val inflater = LayoutInflater.from(context)
 
             return when (viewType) {
-                VIEW_TYPE_GLOBAL_HEADER_1 -> GlobalHeaderViewHolder(inflater.inflate(R.layout.cell_header, parent, false))
-                VIEW_TYPE_GLOBAL_HEADER_2 -> GlobalHeaderViewHolder(inflater.inflate(R.layout.cell_header_2, parent, false))
-                VIEW_TYPE_GLOBAL_FOOTER -> GlobalFooterViewHolder(inflater.inflate(R.layout.cell_footer, parent, false))
-                VIEW_TYPE_SECTION_HEADER -> SectionHeaderViewHolder(inflater.inflate(R.layout.cell_header, parent, false))
-                VIEW_TYPE_SECTION_FOOTER -> SectionFooterViewHolder(inflater.inflate(R.layout.cell_footer, parent, false))
+                VIEW_TYPE_GLOBAL_HEADER_1 -> GlobalHeaderViewHolder(
+                    inflater.inflate(
+                        R.layout.cell_header,
+                        parent,
+                        false
+                    )
+                )
+                VIEW_TYPE_GLOBAL_HEADER_2 -> GlobalHeaderViewHolder(
+                    inflater.inflate(
+                        R.layout.cell_header_2,
+                        parent,
+                        false
+                    )
+                )
+                VIEW_TYPE_GLOBAL_FOOTER -> GlobalFooterViewHolder(
+                    inflater.inflate(
+                        R.layout.cell_footer,
+                        parent,
+                        false
+                    )
+                )
+                VIEW_TYPE_SECTION_HEADER -> SectionHeaderViewHolder(
+                    inflater.inflate(
+                        R.layout.cell_header,
+                        parent,
+                        false
+                    )
+                )
+                VIEW_TYPE_SECTION_FOOTER -> SectionFooterViewHolder(
+                    inflater.inflate(
+                        R.layout.cell_footer,
+                        parent,
+                        false
+                    )
+                )
                 VIEW_TYPE_SECTION_NO_CONTENT -> SectionNoContentViewHolder(
                     inflater.inflate(
                         R.layout.cell_no_content, parent, false
                     )
                 )
-                VIEW_TYPE_ITEM -> ItemViewHolder(inflater.inflate(R.layout.cell_item, parent, false))
-                VIEW_TYPE_GLOBAL_NO_CONTENT -> BaseViewHolder(inflater.inflate(R.layout.cell_no_content, parent, false))
+                VIEW_TYPE_ITEM -> ItemViewHolder(
+                    inflater.inflate(
+                        R.layout.cell_item,
+                        parent,
+                        false
+                    )
+                )
+                VIEW_TYPE_GLOBAL_NO_CONTENT -> BaseViewHolder(
+                    inflater.inflate(
+                        R.layout.cell_no_content,
+                        parent,
+                        false
+                    )
+                )
                 else -> throw IllegalArgumentException()
             }
         }
@@ -199,7 +249,8 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
         override fun compareSectionKeys(key1: Int, key2: Int): Int = key1.compareTo(key2)
 
-        override fun compareItems(sectionKey: Int, item1: Item, item2: Item): Int = item1.id.compareTo(item2.id)
+        override fun compareItems(sectionKey: Int, item1: Item, item2: Item): Int =
+            item1.id.compareTo(item2.id)
 
         inner class GlobalHeaderViewHolder(view: View) : BaseViewHolder(view) {
             init {
@@ -259,7 +310,11 @@ class ExampleActivityKotlin : AppCompatActivity() {
                 }
             }
 
-            override fun partialBind(adapterPosition: Int, sectionKey: Int, payloads: MutableList<Any>) {
+            override fun partialBind(
+                adapterPosition: Int,
+                sectionKey: Int,
+                payloads: MutableList<Any>
+            ) {
                 if (payloads.isNotEmpty()) {
                     itemView.itemHeader.text = payloads.first().toString()
                 }
@@ -293,7 +348,11 @@ class ExampleActivityKotlin : AppCompatActivity() {
                 }
             }
 
-            override fun partialBind(adapterPosition: Int, sectionKey: Int, payloads: MutableList<Any>) {
+            override fun partialBind(
+                adapterPosition: Int,
+                sectionKey: Int,
+                payloads: MutableList<Any>
+            ) {
                 with(itemView) {
                     if (payloads.isNotEmpty()) {
                         noContent.text = noContent.text.toString() + payloads.first().toString()
@@ -319,7 +378,12 @@ class ExampleActivityKotlin : AppCompatActivity() {
                 }
             }
 
-            override fun partialBind(adapterPosition: Int, sectionKey: Int, item: Item, payloads: MutableList<Any>) {
+            override fun partialBind(
+                adapterPosition: Int,
+                sectionKey: Int,
+                item: Item,
+                payloads: MutableList<Any>
+            ) {
                 with(itemView) {
                     payloads.forEach {
                         when (it) {

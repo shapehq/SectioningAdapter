@@ -1714,7 +1714,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
     // region Logging
 
-    fun state(): String {
+    internal fun state(): String {
         val sb = StringBuilder()
             .appendln("Sectioning adapter state ($name)")
             .appendln("- content size: ${content.size}")
