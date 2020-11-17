@@ -15,7 +15,8 @@ import kotlin.collections.HashMap
 import kotlin.collections.HashSet
 
 @Suppress("MemberVisibilityCanBePrivate", "unused", "SameParameterValue")
-abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.Adapter<SectioningAdapter.BaseViewHolder>() {
+abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
+    RecyclerView.Adapter<SectioningAdapter.BaseViewHolder>() {
 
     private val name: String
         get() = this.javaClass.name
@@ -38,7 +39,10 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         override fun areItemsTheSame(oldItem: Wrapper<TItem>, newItem: Wrapper<TItem>): Boolean =
         // If the item has a new view type, it must always be rebound.
             // This is necessary for when an item moves to a new section that has a different view type, without actually changing.
-            !forceRebindAllNext && oldItem.viewType == newItem.viewType && let(oldItem.item, newItem.item) { o, n ->
+            !forceRebindAllNext && oldItem.viewType == newItem.viewType && let(
+                oldItem.item,
+                newItem.item
+            ) { o, n ->
                 !forceRebindItemsNext && areItemsTheSame(o, n)
 
             } ?: let(oldItem.nonItem, newItem.nonItem) { o, n ->
@@ -86,7 +90,10 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         }
     }
 
-    private val differ = AsyncListDiffer<Wrapper<TItem>>(listUpdateCallback, AsyncDifferConfig.Builder(differItemCallback).build()).apply {
+    private val differ = AsyncListDiffer<Wrapper<TItem>>(
+        listUpdateCallback,
+        AsyncDifferConfig.Builder(differItemCallback).build()
+    ).apply {
         addListListener { _, _ ->
             onUpdateComplete()
         }
@@ -140,12 +147,24 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
     // region Content
 
-    private class Wrapper<TItem>(val sectionKey: Any, val viewType: Int, val item: TItem?, val nonItem: NonItem?) {
+    private class Wrapper<TItem>(
+        val sectionKey: Any,
+        val viewType: Int,
+        val item: TItem?,
+        val nonItem: NonItem?
+    ) {
 
-        constructor(sectionKey: Any, viewType: Int, item: TItem) : this(sectionKey, viewType, item, null)
+        constructor(sectionKey: Any, viewType: Int, item: TItem) : this(
+            sectionKey,
+            viewType,
+            item,
+            null
+        )
+
         constructor(nonItem: NonItem) : this(nonItem.sectionKey, nonItem.viewType, null, nonItem)
 
-        override fun toString(): String = "Wrapper - section: $sectionKey, view type: $viewType, content: ${item ?: nonItem ?: "empty"}"
+        override fun toString(): String =
+            "Wrapper - section: $sectionKey, view type: $viewType, content: ${item ?: nonItem ?: "empty"}"
     }
 
     private class NonItem(val type: Int, var viewType: Int, val sectionKey: Any, var id: Int) {
@@ -179,7 +198,8 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
                 other.sectionKey == this.sectionKey &&
                 other.id == this.id
 
-        override fun toString(): String = "NonItem type: $type, viewType: $viewType, sectionKey: $sectionKey, sort: $id"
+        override fun toString(): String =
+            "NonItem type: $type, viewType: $viewType, sectionKey: $sectionKey, sort: $id"
     }
 
     private val content = ArrayList<Wrapper<TItem>>()
@@ -313,14 +333,21 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      */
     open fun onContentChanged() {}
 
+    fun onNextChange(action: () -> Unit) {
+        nextChangeCallbacks.add(action)
+    }
+
+    private val nextChangeCallbacks: MutableList<() -> Unit> = ArrayList()
+
     /**
      * Get the item at a given adapter position.
      * @param adapterPosition The absolute adapter position.
      * @return The item at the given adapter position, or null if there is no item at the position.
      */
-    fun getItem(adapterPosition: Int): TItem? = findSectionForAdapterPosition(adapterPosition)?.let { section ->
-        return section.items.getOrNull(adapterPosition - section.adapterPosition - section.headerCount)
-    }
+    fun getItem(adapterPosition: Int): TItem? =
+        findSectionForAdapterPosition(adapterPosition)?.let { section ->
+            return section.items.getOrNull(adapterPosition - section.adapterPosition - section.headerCount)
+        }
 
     /**
      * Iterate over all items currently in the adapter
@@ -332,7 +359,8 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     fun forEach(action: (item: TItem, sectionKey: TSectionKey, adapterPosition: Int) -> Unit) {
         for (section in sections) {
             section.items.forEachIndexed { index, item ->
-                val adapterPosition = if (section.collapsed) -1 else section.adapterPosition + section.headerCount + index
+                val adapterPosition =
+                    if (section.collapsed) -1 else section.adapterPosition + section.headerCount + index
                 action(item, section.key, adapterPosition)
             }
         }
@@ -349,7 +377,8 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     fun getItemIf(predicate: (item: TItem, sectionKey: TSectionKey, adapterPosition: Int) -> Boolean): TItem? {
         for (section in sections) {
             section.items.forEachIndexed { index, item ->
-                val adapterPosition = if (section.collapsed) -1 else section.adapterPosition + section.headerCount + index
+                val adapterPosition =
+                    if (section.collapsed) -1 else section.adapterPosition + section.headerCount + index
                 if (predicate(item, section.key, adapterPosition)) {
                     return item
                 }
@@ -371,7 +400,8 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
         for (section in sections) {
             section.items.forEachIndexed { index, item ->
-                val adapterPosition = if (section.collapsed) -1 else section.adapterPosition + section.headerCount + index
+                val adapterPosition =
+                    if (section.collapsed) -1 else section.adapterPosition + section.headerCount + index
                 if (predicate(item, section.key, adapterPosition)) {
                     result.add(item)
                 }
@@ -592,6 +622,11 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
         onContentChanged()
 
+        nextChangeCallbacks.apply {
+            forEach { it() }
+            clear()
+        }
+
         if (pendingUpdate.get()) {
             pendingUpdate.set(false)
             submitUpdate()
@@ -609,7 +644,8 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
     }
 
 
-    private fun createWrapper(section: Section, item: TItem): Wrapper<TItem> = Wrapper(section.key, section.itemViewType, item)
+    private fun createWrapper(section: Section, item: TItem): Wrapper<TItem> =
+        Wrapper(section.key, section.itemViewType, item)
 
     private fun createWrapper(nonItem: NonItem): Wrapper<TItem> = Wrapper(nonItem)
 
@@ -797,7 +833,14 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
                 if (value != field) {
                     field = value
                     if (value) {
-                        insertEmptyContent(NonItem(NonItem.TYPE_NO_CONTENT, getNoContentViewTypeForStaticSection(key), key, 0), 0)
+                        insertEmptyContent(
+                            NonItem(
+                                NonItem.TYPE_NO_CONTENT,
+                                getNoContentViewTypeForStaticSection(key),
+                                key,
+                                0
+                            ), 0
+                        )
                     } else {
                         removeEmptyContent(0)
                     }
@@ -820,9 +863,10 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
             }
         }
 
-        override fun toString(): String = "Key: $key, Index: $index, position: $adapterPosition, itemCount: $itemCount, size: $size, collapsed: $collapsed"
+        override fun toString(): String =
+            "Key: $key, Index: $index, position: $adapterPosition, itemCount: $itemCount, size: $size, collapsed: $collapsed"
 
-        internal fun verifyItemPosition(itemPosition: Int) {
+        fun verifyItemPosition(itemPosition: Int) {
             if (itemPosition < 0 || itemPosition >= items.size) {
                 throw IndexOutOfBoundsException("Illegal item position ($itemPosition, size: ${items.size}) for section with key $key. ${state()}")
             }
@@ -844,7 +888,8 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      * Find the sectionKey for the section associated with the given adapter position.
      * @param position The adapter position. Must be between [globalHeaderCount] and [globalHeaderCount] + [globalSectionsSize] - 1.
      */
-    fun findSectionKeyForAdapterPosition(position: Int): TSectionKey? = findSectionForAdapterPosition(position)?.key
+    fun findSectionKeyForAdapterPosition(position: Int): TSectionKey? =
+        findSectionForAdapterPosition(position)?.key
 
     /**
      * Get all section keys in the adapter, in the order they are currently being displayed.
@@ -955,7 +1000,10 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
     fun refreshStaticSectionNoContent(sectionKey: TSectionKey) {
         getSectionForKey(sectionKey)?.let { section ->
-            if (section.static && section.noContent != null != showNoContentForStaticSection(sectionKey) || section.noContent?.viewType != getNoContentViewTypeForStaticSection(sectionKey)) {
+            if (section.static && section.noContent != null != showNoContentForStaticSection(
+                    sectionKey
+                ) || section.noContent?.viewType != getNoContentViewTypeForStaticSection(sectionKey)
+            ) {
                 updateSections()
             }
         }
@@ -985,11 +1033,12 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         HashMap<TSectionKey, Comparator<TItem>>()
     }
 
-    private fun itemComparator(key: TSectionKey): Comparator<TItem> = itemComparators.getOrPut(key) {
-        Comparator<TItem> { o1, o2 ->
-            compareItems(key, o1, o2)
+    private fun itemComparator(key: TSectionKey): Comparator<TItem> =
+        itemComparators.getOrPut(key) {
+            Comparator<TItem> { o1, o2 ->
+                compareItems(key, o1, o2)
+            }
         }
-    }
 
     /**
      * Override and return true if the adapter sections should be sorted. If this returns true, [compareSectionKeys] must also be overridden.
@@ -1037,7 +1086,8 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      * @param sectionKey The section sectionKey.
      * @return The current number of items in the section associated with the section sectionKey, or -1 if the section does not exist.
      */
-    fun getItemCountForSection(sectionKey: TSectionKey): Int = sectionsMap[sectionKey]?.itemCount ?: -1
+    fun getItemCountForSection(sectionKey: TSectionKey): Int =
+        sectionsMap[sectionKey]?.itemCount ?: -1
 
     /**
      * @param sectionKey The section sectionKey.
@@ -1119,7 +1169,8 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
      *
      * If the section is not found, an empty list is returned.
      */
-    fun getItemsInSection(sectionKey: TSectionKey): List<TItem> = getSectionForKey(sectionKey)?.items ?: emptyList()
+    fun getItemsInSection(sectionKey: TSectionKey): List<TItem> =
+        getSectionForKey(sectionKey)?.items ?: emptyList()
 
     // endregion
 
@@ -1572,13 +1623,23 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         }
     }
 
-    override fun onBindViewHolder(holder: BaseViewHolder, position: Int, payloads: MutableList<Any>) {
+    override fun onBindViewHolder(
+        holder: BaseViewHolder,
+        position: Int,
+        payloads: MutableList<Any>
+    ) {
         if (payloads.isNotEmpty()) {
             holder.partialBind(position, payloads)
 
             if (::viewHolderConfigs.isInitialized) {
                 for (config in viewHolderConfigs) {
-                    config.onBindViewHolder(this, holder, holder.itemView.context, position, payloads)
+                    config.onBindViewHolder(
+                        this,
+                        holder,
+                        holder.itemView.context,
+                        position,
+                        payloads
+                    )
                 }
             }
 
@@ -1638,7 +1699,11 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
         viewHolderConfigs.add(config)
     }
 
-    abstract fun onCreateViewHolder(context: Context, parent: ViewGroup, viewType: Int): BaseViewHolder
+    abstract fun onCreateViewHolder(
+        context: Context,
+        parent: ViewGroup,
+        viewType: Int
+    ): BaseViewHolder
 
     open class BaseViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
 
@@ -1672,7 +1737,11 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
             partialBind(adapterPosition, wrapper.sectionKey as TSectionKey, payloads)
         }
 
-        open fun partialBind(adapterPosition: Int, sectionKey: TSectionKey, payloads: MutableList<Any>) {
+        open fun partialBind(
+            adapterPosition: Int,
+            sectionKey: TSectionKey,
+            payloads: MutableList<Any>
+        ) {
             bind(adapterPosition, sectionKey)
         }
 
@@ -1686,7 +1755,8 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
         final override fun bind(adapterPosition: Int) {
             val wrapper = currentContent[adapterPosition]
-            val item = wrapper.item ?: throw IllegalArgumentException("Item was null for wrapper ($wrapper) bound to SectionItemViewHolder at position: $adapterPosition")
+            val item = wrapper.item
+                ?: throw IllegalArgumentException("Item was null for wrapper ($wrapper) bound to SectionItemViewHolder at position: $adapterPosition")
 
             @Suppress("UNCHECKED_CAST")
             bind(adapterPosition, wrapper.sectionKey as TSectionKey, item)
@@ -1696,17 +1766,24 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
         final override fun partialBind(adapterPosition: Int, payloads: MutableList<Any>) {
             val wrapper = currentContent[adapterPosition]
-            val item = wrapper.item ?: throw IllegalArgumentException("Item was null for wrapper ($wrapper) bound to SectionItemViewHolder at position: $adapterPosition")
+            val item = wrapper.item
+                ?: throw IllegalArgumentException("Item was null for wrapper ($wrapper) bound to SectionItemViewHolder at position: $adapterPosition")
 
             @Suppress("UNCHECKED_CAST")
             partialBind(adapterPosition, wrapper.sectionKey as TSectionKey, item, payloads)
         }
 
-        open fun partialBind(adapterPosition: Int, sectionKey: TSectionKey, item: TItem, payloads: MutableList<Any>) {
+        open fun partialBind(
+            adapterPosition: Int,
+            sectionKey: TSectionKey,
+            item: TItem,
+            payloads: MutableList<Any>
+        ) {
             bind(adapterPosition, sectionKey, item)
         }
 
-        protected fun getItem(): TItem? = if (adapterPosition >= 0) currentContent[adapterPosition].item else null
+        protected fun getItem(): TItem? =
+            if (adapterPosition >= 0) currentContent[adapterPosition].item else null
     }
 
     // endregion
@@ -1714,25 +1791,25 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> : RecyclerView.
 
     // region Logging
 
-    internal fun state(): String {
+    fun state(): String {
         val sb = StringBuilder()
-            .appendln("Sectioning adapter state ($name)")
-            .appendln("- content size: ${content.size}")
-            .appendln("- submitted size: ${currentContent.size}")
-            .appendln("- section count: ${sections.size}")
+            .appendLine("Sectioning adapter state ($name)")
+            .appendLine("- content size: ${content.size}")
+            .appendLine("- submitted size: ${currentContent.size}")
+            .appendLine("- section count: ${sections.size}")
 
         for (section in sections) {
-            sb.appendln(" - section: ${section.key}")
+            sb.appendLine(" - section: ${section.key}")
 
             for (item in section.items) {
-                sb.appendln("  - item: $item")
+                sb.appendLine("  - item: $item")
             }
         }
 
-        sb.appendln("Content:")
+        sb.appendLine("Content:")
 
         for (item in content) {
-            sb.appendln("- $item")
+            sb.appendLine("- $item")
         }
 
         return sb.toString()

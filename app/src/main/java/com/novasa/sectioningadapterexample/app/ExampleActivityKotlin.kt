@@ -83,7 +83,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
         disposables += dataSource.data()
             .subscribe { data ->
                 for (s in data.static) {
-                    sectioningAdapter.state
+                    sectioningAdapter.state()
                 }
             }
 
