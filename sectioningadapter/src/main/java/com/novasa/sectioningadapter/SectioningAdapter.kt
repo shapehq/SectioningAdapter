@@ -21,10 +21,6 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
     private val name: String
         get() = this.javaClass.name
 
-    private object GlobalSectionKey {
-        override fun toString(): String = "Global section key"
-    }
-
     private val updateHandler = Handler()
 
     // region Diff
@@ -34,25 +30,26 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
     private var updateInProgress = AtomicBoolean(false)
     private var pendingUpdate = AtomicBoolean(false)
 
-    private val differItemCallback = object : DiffUtil.ItemCallback<Wrapper<TItem>>() {
+    private val differItemCallback = object : DiffUtil.ItemCallback<Wrapper<TItem, TSectionKey>>() {
 
-        override fun areItemsTheSame(oldItem: Wrapper<TItem>, newItem: Wrapper<TItem>): Boolean =
-        // If the item has a new view type, it must always be rebound.
+        override fun areItemsTheSame(oldItem: Wrapper<TItem, TSectionKey>, newItem: Wrapper<TItem, TSectionKey>): Boolean =
+
+            // If the item has a new view type, it must always be rebound.
             // This is necessary for when an item moves to a new section that has a different view type, without actually changing.
-            !forceRebindAllNext && oldItem.viewType == newItem.viewType && let(
-                oldItem.item,
-                newItem.item
-            ) { o, n ->
-                !forceRebindItemsNext && areItemsTheSame(o, n)
+            !forceRebindAllNext && oldItem.viewType == newItem.viewType && let(oldItem.item, newItem.item, oldItem.sectionKey, newItem.sectionKey) { o, n, ok, nk ->
+                !forceRebindItemsNext && areItemsTheSame(o, n, ok, nk)
 
             } ?: let(oldItem.nonItem, newItem.nonItem) { o, n ->
                 o.isEqualTo(n)
 
             } ?: false
 
-        override fun areContentsTheSame(oldItem: Wrapper<TItem>, newItem: Wrapper<TItem>): Boolean =
-            let(oldItem.item, newItem.item) { o, n ->
-                areContentsTheSame(o, n)
+        override fun areContentsTheSame(
+            oldItem: Wrapper<TItem, TSectionKey>,
+            newItem: Wrapper<TItem, TSectionKey>
+        ): Boolean =
+            let(oldItem.item, newItem.item, oldItem.sectionKey, newItem.sectionKey) { o, n, ok, nk ->
+                areContentsTheSame(o, n, ok, nk)
 
             } ?: let(oldItem.nonItem, newItem.nonItem) { _, n ->
                 !n.hasPendingChange
@@ -60,9 +57,12 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
             } ?: true
 
 
-        override fun getChangePayload(oldItem: Wrapper<TItem>, newItem: Wrapper<TItem>): Any? {
-            let(oldItem.item, newItem.item) { o, n ->
-                return getChangePayload(o, n)
+        override fun getChangePayload(
+            oldItem: Wrapper<TItem, TSectionKey>,
+            newItem: Wrapper<TItem, TSectionKey>
+        ): Any? {
+            let(oldItem.item, newItem.item, oldItem.sectionKey, newItem.sectionKey) { o, n, ok, nk ->
+                return getChangePayload(o, n, ok, nk)
             }
             let(oldItem.nonItem, newItem.nonItem) { _, n ->
                 return n.consumePendingChange()
@@ -90,7 +90,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
         }
     }
 
-    private val differ = AsyncListDiffer<Wrapper<TItem>>(
+    private val differ = AsyncListDiffer<Wrapper<TItem, TSectionKey>>(
         listUpdateCallback,
         AsyncDifferConfig.Builder(differItemCallback).build()
     ).apply {
@@ -102,10 +102,13 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
     /**
      * Override to manually determine if items in the adapter are equal.
      *
-     * This is always called during a list refresh.
+     * This is always called during a list refresh, and it is only called if the items have been determined to belong to the same section,
+     * Since if the item has moved to a different section, it must always be rebound.
      *
      * @param oldItem The current item
      * @param newItem The updated item
+     * @param oldSectionKey The section key associated with the current item
+     * @param newSectionKey The section key associated with the new item
      * @return true if the items are equal, even if their contents differ, e.g. if the items have the same id,
      * but have different values in other fields.
      *
@@ -115,7 +118,8 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
      * Default returns the equals implementation between the items.
      * @see [DiffUtil.ItemCallback.areItemsTheSame]
      */
-    open fun areItemsTheSame(oldItem: TItem, newItem: TItem) = oldItem == newItem
+    open fun areItemsTheSame(oldItem: TItem, newItem: TItem, oldSectionKey: TSectionKey, newSectionKey: TSectionKey) =
+        oldItem == newItem
 
     /**
      * Override to determine if item contents have changed, and view updates should be administered.
@@ -123,6 +127,8 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
      * This is only called if [areItemsTheSame] returned true.
      * @param oldItem The current item
      * @param newItem The updated item
+     * @param oldSectionKey The section key associated with the current item
+     * @param newSectionKey The section key associated with the new item
      * @return true if the items' contents are equal, and the view should not be updated.
      *
      * If this returns false, [getChangePayload] is called to determine if a change payload should be sent to [BaseViewHolder.partialBind].
@@ -130,44 +136,57 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
      * Default returns true
      * @see [DiffUtil.ItemCallback.areContentsTheSame]
      */
-    open fun areContentsTheSame(oldItem: TItem, newItem: TItem): Boolean = true
+    open fun areContentsTheSame(oldItem: TItem, newItem: TItem, oldSectionKey: TSectionKey, newSectionKey: TSectionKey): Boolean =
+        true
 
     /**
      * If [areContentsTheSame] returns false, this will be called to determine if an update payload should be sent to [BaseViewHolder.partialBind].
      * @param oldItem The current item
      * @param newItem The updated item
+     * @param oldSectionKey The section key associated with the current item
+     * @param newSectionKey The section key associated with the new item
      * @return A payload object, or null if no payload should be sent.
      *
      * Default returns null
      */
-    open fun getChangePayload(oldItem: TItem, newItem: TItem): Any? = null
+    open fun getChangePayload(oldItem: TItem, newItem: TItem, oldSectionKey: TSectionKey, newSectionKey: TSectionKey): Any? = null
 
     // endregion
 
 
     // region Content
 
-    private class Wrapper<TItem>(
-        val sectionKey: Any,
+    private class Wrapper<TItem, TSectionKey>(
+        val sectionKey: TSectionKey?,
         val viewType: Int,
         val item: TItem?,
-        val nonItem: NonItem?
+        val nonItem: NonItem<TSectionKey>?
     ) {
 
-        constructor(sectionKey: Any, viewType: Int, item: TItem) : this(
+        constructor(sectionKey: TSectionKey?, viewType: Int, item: TItem) : this(
             sectionKey,
             viewType,
             item,
             null
         )
 
-        constructor(nonItem: NonItem) : this(nonItem.sectionKey, nonItem.viewType, null, nonItem)
+        constructor(nonItem: NonItem<TSectionKey>) : this(
+            nonItem.sectionKey,
+            nonItem.viewType,
+            null,
+            nonItem
+        )
 
         override fun toString(): String =
             "Wrapper - section: $sectionKey, view type: $viewType, content: ${item ?: nonItem ?: "empty"}"
     }
 
-    private class NonItem(val type: Int, var viewType: Int, val sectionKey: Any, var id: Int) {
+    private class NonItem<TSectionKey>(
+        val type: Int,
+        var viewType: Int,
+        val sectionKey: TSectionKey?,
+        var id: Int
+    ) {
 
         companion object {
             const val TYPE_HEADER = 1
@@ -193,22 +212,22 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
             return payload
         }
 
-        fun isEqualTo(other: NonItem): Boolean = other.type == this.type &&
+        fun isEqualTo(other: NonItem<TSectionKey>): Boolean = other.type == this.type &&
                 other.viewType == this.viewType &&
                 other.sectionKey == this.sectionKey &&
                 other.id == this.id
 
         override fun toString(): String =
-            "NonItem type: $type, viewType: $viewType, sectionKey: $sectionKey, sort: $id"
+            "NonItem<TSectionKey type: $type, viewType: $viewType, sectionKey: $sectionKey, sort: $id"
     }
 
-    private val content = ArrayList<Wrapper<TItem>>()
+    private val content = ArrayList<Wrapper<TItem, TSectionKey>>()
 
-    private val currentContent: List<Wrapper<TItem>>
+    private val currentContent: List<Wrapper<TItem, TSectionKey>>
         get() = differ.currentList
 
-    private val globalHeaders = SparseArray<NonItem>()
-    private val globalFooters = SparseArray<NonItem>()
+    private val globalHeaders = SparseArray<NonItem<TSectionKey>>()
+    private val globalFooters = SparseArray<NonItem<TSectionKey>>()
 
     private val sections = ArrayList<Section>()
     private val sectionsMap = HashMap<TSectionKey, Section>()
@@ -339,15 +358,15 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
 
     private val nextChangeCallbacks: MutableList<() -> Unit> = ArrayList()
 
+    private fun getWrapper(adapterPosition: Int): Wrapper<TItem, TSectionKey>? =
+        if (adapterPosition >= 0 && adapterPosition < currentContent.size) currentContent[adapterPosition] else null
+
     /**
      * Get the item at a given adapter position.
      * @param adapterPosition The absolute adapter position.
      * @return The item at the given adapter position, or null if there is no item at the position.
      */
-    fun getItem(adapterPosition: Int): TItem? =
-        findSectionForAdapterPosition(adapterPosition)?.let { section ->
-            return section.items.getOrNull(adapterPosition - section.adapterPosition - section.headerCount)
-        }
+    fun getItem(adapterPosition: Int): TItem? = getWrapper(adapterPosition)?.item
 
     /**
      * Iterate over all items currently in the adapter
@@ -357,11 +376,9 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
      * If the section is currently collapsed, the adapter position will be -1.
      */
     fun forEach(action: (item: TItem, sectionKey: TSectionKey, adapterPosition: Int) -> Unit) {
-        for (section in sections) {
-            section.items.forEachIndexed { index, item ->
-                val adapterPosition =
-                    if (section.collapsed) -1 else section.adapterPosition + section.headerCount + index
-                action(item, section.key, adapterPosition)
+        currentContent.forEachIndexed { index, wrapper ->
+            let(wrapper.item, wrapper.sectionKey) { item, sectionKey ->
+                action(item, sectionKey, index)
             }
         }
     }
@@ -371,20 +388,20 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
      *
      * @param predicate Predicate supplying the item, its associated section sectionKey, and its current adapter position.
      *
-     * If the section is currently collapsed, the adapter position will be -1.
      * @return The first item for which the predicate returns true, or null if the predicate never returns true.
      */
     fun getItemIf(predicate: (item: TItem, sectionKey: TSectionKey, adapterPosition: Int) -> Boolean): TItem? {
-        for (section in sections) {
-            section.items.forEachIndexed { index, item ->
-                val adapterPosition =
-                    if (section.collapsed) -1 else section.adapterPosition + section.headerCount + index
-                if (predicate(item, section.key, adapterPosition)) {
-                    return item
-                }
+
+        var result: TItem? = null
+
+        forEach { item, sectionKey, adapterPosition ->
+            if (predicate(item, sectionKey, adapterPosition)) {
+                result = item
+                return@forEach
             }
         }
-        return null
+
+        return result
     }
 
     /**
@@ -392,19 +409,14 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
      *
      * @param predicate Predicate supplying the item, its associated section sectionKey, and its current adapter position.
      *
-     * If the section is currently collapsed, the adapter position will be -1.
      * @return A list of all items for which the predicate returns true.
      */
     fun getItemsIf(predicate: (item: TItem, sectionKey: TSectionKey, adapterPosition: Int) -> Boolean): List<TItem> {
         val result = ArrayList<TItem>()
 
-        for (section in sections) {
-            section.items.forEachIndexed { index, item ->
-                val adapterPosition =
-                    if (section.collapsed) -1 else section.adapterPosition + section.headerCount + index
-                if (predicate(item, section.key, adapterPosition)) {
-                    result.add(item)
-                }
+        forEach { item, sectionKey, adapterPosition ->
+            if (predicate(item, sectionKey, adapterPosition)) {
+                result.add(item)
             }
         }
 
@@ -443,10 +455,11 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
      * @return The adapter position of the item if found, or -1 if the item is not in the adapter.
      */
     fun findAdapterPositionForItem(item: TItem): Int {
-        for (section in sections) {
-            section.items.forEachIndexed { index, sItem ->
-                if (areItemsTheSame(item, sItem)) {
-                    return section.adapterPosition + section.headerCount + index
+
+        currentContent.forEachIndexed { index, wrapper ->
+            let (wrapper.item, wrapper.sectionKey) { sItem, sectionKey ->
+                if (areItemsTheSame(item, sItem, sectionKey, sectionKey)) {
+                    return@findAdapterPositionForItem index
                 }
             }
         }
@@ -556,13 +569,13 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
             if (globalSectionsSize > 0) {
                 for (section: Section in sections) {
                     with(section) {
-                        for (footer: NonItem in headers) {
+                        for (footer: NonItem<TSectionKey> in headers) {
                             add(createWrapper(footer))
                         }
 
                         if (!collapsed) {
                             if (isEmpty && emptyContentCount > 0) {
-                                for (item: NonItem in emptyContent) {
+                                for (item: NonItem<TSectionKey> in emptyContent) {
                                     add(createWrapper(item))
                                 }
 
@@ -573,7 +586,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
                             }
                         }
 
-                        for (footer: NonItem in footers) {
+                        for (footer: NonItem<TSectionKey> in footers) {
                             add(createWrapper(footer))
                         }
                     }
@@ -644,10 +657,11 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
     }
 
 
-    private fun createWrapper(section: Section, item: TItem): Wrapper<TItem> =
+    private fun createWrapper(section: Section, item: TItem): Wrapper<TItem, TSectionKey> =
         Wrapper(section.key, section.itemViewType, item)
 
-    private fun createWrapper(nonItem: NonItem): Wrapper<TItem> = Wrapper(nonItem)
+    private fun createWrapper(nonItem: NonItem<TSectionKey>): Wrapper<TItem, TSectionKey> =
+        Wrapper(nonItem)
 
     // endregion
 
@@ -777,9 +791,9 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
 
         val items = ArrayList<TItem>()
         var itemViewType: Int = 0
-        lateinit var headers: ArrayList<NonItem>
-        lateinit var footers: ArrayList<NonItem>
-        lateinit var emptyContent: ArrayList<NonItem>
+        lateinit var headers: ArrayList<NonItem<TSectionKey>>
+        lateinit var footers: ArrayList<NonItem<TSectionKey>>
+        lateinit var emptyContent: ArrayList<NonItem<TSectionKey>>
 
         var index = -1
         var adapterPosition = -1
@@ -847,10 +861,10 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
                 }
             }
 
-        val noContent: NonItem?
+        val noContent: NonItem<TSectionKey>?
             get() = if (::emptyContent.isInitialized) emptyContent.firstOrNull() else null
 
-        private fun insertEmptyContent(item: NonItem, index: Int) {
+        private fun insertEmptyContent(item: NonItem<TSectionKey>, index: Int) {
             if (!::emptyContent.isInitialized) {
                 emptyContent = ArrayList()
             }
@@ -1399,7 +1413,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
      */
     fun insertGlobalHeader(id: Int, viewType: Int) {
 
-        val header = NonItem(NonItem.TYPE_HEADER, viewType, GlobalSectionKey, id)
+        val header = NonItem<TSectionKey>(NonItem.TYPE_HEADER, viewType, null, id)
         val pSize = globalHeaders.size()
         var index = globalHeaders.indexOfKey(id)
 
@@ -1467,7 +1481,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
      */
     fun insertGlobalFooter(id: Int, viewType: Int) {
 
-        val footer = NonItem(NonItem.TYPE_HEADER, viewType, GlobalSectionKey, id)
+        val footer = NonItem<TSectionKey>(NonItem.TYPE_HEADER, viewType, null, id)
         val offset = globalFooterStartPosition
         var index = globalFooters.indexOfKey(id)
 
@@ -1563,14 +1577,15 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
     private val globalNoContentPosition: Int
         get() = if (globalNoContentVisible) globalHeaderCount else -1
 
-    private var globalNoContent: NonItem? = null
-    private fun getGlobalNoContent(): NonItem = getGlobalNoContentViewType().let { viewType ->
-        globalNoContent?.also {
-            it.viewType = viewType
-        } ?: NonItem(NonItem.TYPE_NO_CONTENT, viewType, GlobalSectionKey, 0).also {
-            globalNoContent = it
+    private var globalNoContent: NonItem<TSectionKey>? = null
+    private fun getGlobalNoContent(): NonItem<TSectionKey> =
+        getGlobalNoContentViewType().let { viewType ->
+            globalNoContent?.also {
+                it.viewType = viewType
+            } ?: NonItem<TSectionKey>(NonItem.TYPE_NO_CONTENT, viewType, null, 0).also {
+                globalNoContent = it
+            }
         }
-    }
 
     private fun insertGlobalNoContentIfRequired() {
         if (showGlobalNoContent()) {
@@ -1731,7 +1746,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
         abstract fun bind(adapterPosition: Int, sectionKey: TSectionKey)
 
         final override fun partialBind(adapterPosition: Int, payloads: MutableList<Any>) {
-            val wrapper: Wrapper<TItem> = currentContent[adapterPosition]
+            val wrapper: Wrapper<TItem, TSectionKey> = currentContent[adapterPosition]
 
             @Suppress("UNCHECKED_CAST")
             partialBind(adapterPosition, wrapper.sectionKey as TSectionKey, payloads)
@@ -1747,7 +1762,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
 
         protected fun getSectionKey(): TSectionKey? {
             @Suppress("UNCHECKED_CAST")
-            return if (adapterPosition >= 0) currentContent[adapterPosition].sectionKey as? TSectionKey else null
+            return if (adapterPosition >= 0) currentContent[adapterPosition].sectionKey else null
         }
     }
 
@@ -1782,8 +1797,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
             bind(adapterPosition, sectionKey, item)
         }
 
-        protected fun getItem(): TItem? =
-            if (adapterPosition >= 0) currentContent[adapterPosition].item else null
+        protected fun getItem(): TItem? = getItem(adapterPosition)
     }
 
     // endregion

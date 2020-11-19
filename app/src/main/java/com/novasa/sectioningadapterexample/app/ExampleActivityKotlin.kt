@@ -117,10 +117,10 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
     private fun setItems() {
         val items = arrayListOf(
-            Item(101, 2),
-            Item(102, 2),
-            Item(103, 2),
-            Item(104, 1)
+            Item(101, 3),
+            Item(102, 3),
+            Item(103, 3),
+            Item(104, 3)
         )
 
         sectioningAdapter.setItemsInSection(3, items)
@@ -146,12 +146,15 @@ class ExampleActivityKotlin : AppCompatActivity() {
             Log.d(TAG, "Update time: $mostRecentUpdateTime ms")
         }
 
-        override fun areItemsTheSame(oldItem: Item, newItem: Item): Boolean {
-            return super.areItemsTheSame(oldItem, newItem)
+        override fun areItemsTheSame(oldItem: Item, newItem: Item, oldSectionKey: Int, newSectionKey: Int): Boolean {
+            if (newItem.id == 102) {
+                return false
+            }
+            return super.areItemsTheSame(oldItem, newItem, oldSectionKey, newSectionKey)
         }
 
-        override fun areContentsTheSame(oldItem: Item, newItem: Item): Boolean {
-            return super.areContentsTheSame(oldItem, newItem)
+        override fun areContentsTheSame(oldItem: Item, newItem: Item, oldSectionKey: Int, newSectionKey: Int): Boolean {
+            return super.areContentsTheSame(oldItem, newItem, oldSectionKey, newSectionKey)
         }
 
         override fun onCreateViewHolder(
@@ -162,60 +165,16 @@ class ExampleActivityKotlin : AppCompatActivity() {
             val inflater = LayoutInflater.from(context)
 
             return when (viewType) {
-                VIEW_TYPE_GLOBAL_HEADER_1 -> GlobalHeaderViewHolder(
-                    inflater.inflate(
-                        R.layout.cell_header,
-                        parent,
-                        false
-                    )
-                )
-                VIEW_TYPE_GLOBAL_HEADER_2 -> GlobalHeaderViewHolder(
-                    inflater.inflate(
-                        R.layout.cell_header_2,
-                        parent,
-                        false
-                    )
-                )
-                VIEW_TYPE_GLOBAL_FOOTER -> GlobalFooterViewHolder(
-                    inflater.inflate(
-                        R.layout.cell_footer,
-                        parent,
-                        false
-                    )
-                )
-                VIEW_TYPE_SECTION_HEADER -> SectionHeaderViewHolder(
-                    inflater.inflate(
-                        R.layout.cell_header,
-                        parent,
-                        false
-                    )
-                )
-                VIEW_TYPE_SECTION_FOOTER -> SectionFooterViewHolder(
-                    inflater.inflate(
-                        R.layout.cell_footer,
-                        parent,
-                        false
-                    )
-                )
-                VIEW_TYPE_SECTION_NO_CONTENT -> SectionNoContentViewHolder(
-                    inflater.inflate(
-                        R.layout.cell_no_content, parent, false
-                    )
-                )
+                VIEW_TYPE_GLOBAL_HEADER_1 -> GlobalHeaderViewHolder(inflater.inflate(R.layout.cell_header, parent, false))
+                VIEW_TYPE_GLOBAL_HEADER_2 -> GlobalHeaderViewHolder(inflater.inflate(R.layout.cell_header_2, parent, false))
+                VIEW_TYPE_GLOBAL_FOOTER -> GlobalFooterViewHolder(inflater.inflate(R.layout.cell_footer, parent, false))
+                VIEW_TYPE_SECTION_HEADER -> SectionHeaderViewHolder(inflater.inflate(R.layout.cell_header, parent, false))
+                VIEW_TYPE_SECTION_FOOTER -> SectionFooterViewHolder(inflater.inflate(R.layout.cell_footer, parent, false))
+                VIEW_TYPE_SECTION_NO_CONTENT -> SectionNoContentViewHolder(inflater.inflate(R.layout.cell_no_content, parent, false))
                 VIEW_TYPE_ITEM -> ItemViewHolder(
-                    inflater.inflate(
-                        R.layout.cell_item,
-                        parent,
-                        false
-                    )
+                    inflater.inflate(R.layout.cell_item, parent, false)
                 )
-                VIEW_TYPE_GLOBAL_NO_CONTENT -> BaseViewHolder(
-                    inflater.inflate(
-                        R.layout.cell_no_content,
-                        parent,
-                        false
-                    )
-                )
+                VIEW_TYPE_GLOBAL_NO_CONTENT -> BaseViewHolder(inflater.inflate(R.layout.cell_no_content, parent, false))
                 else -> throw IllegalArgumentException()
             }
         }
