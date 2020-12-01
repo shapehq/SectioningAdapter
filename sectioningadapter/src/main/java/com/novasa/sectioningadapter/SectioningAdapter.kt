@@ -1401,6 +1401,13 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
     val globalNonItemContentSize: Int
         get() = if (globalNoContentVisible) 1 else 0
 
+
+    /**
+     * @param id The global header id.
+     * @return true if the adapter currently contains a header with the specified id.
+     */
+    fun hasGlobalHeader(id: Int) = globalHeaders.get(id) != null
+
     /**
      * Insert a global header in the adapter.
      *
@@ -1524,20 +1531,11 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
      * @param payload The payload to send to the view holder. It will be received in the [BaseViewHolder.partialBind] function.
      */
     fun notifyGlobalFooterChanged(id: Int, payload: Any? = null) {
-        require(id in 0 until globalFooterCount) {
-            "Failed to update global footer. Invalid position: $id. Current global footer count was $globalFooterCount"
+        globalFooters.get(id)?.let {
+            it.setHasPendingChange(payload)
+            submitUpdate()
         }
-
-        globalFooters[id].setHasPendingChange(payload)
-
-        submitUpdate()
     }
-
-    /**
-     * @param id The global header id.
-     * @return true if the adapter currently contains a header with the specified id.
-     */
-    fun hasGlobalHeader(id: Int) = globalHeaders.get(id) != null
 
     private val globalFooterStartPosition: Int
         get() = globalHeaderCount + globalSectionsSize + globalNonItemContentSize
