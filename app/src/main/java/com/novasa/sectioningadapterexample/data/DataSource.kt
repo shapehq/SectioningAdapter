@@ -2,6 +2,6 @@ package com.novasa.sectioningadapterexample.data
 
 import io.reactivex.Observable
 
-interface DataSource {
-    fun data(): Observable<Data>
+interface DataSource<TItem> {
+    fun data(): Observable<Data<TItem>>
 }

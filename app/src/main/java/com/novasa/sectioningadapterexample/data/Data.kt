@@ -2,4 +2,4 @@ package com.novasa.sectioningadapterexample.data
 
 import java.util.*
 
-data class Data(val items: List<Item>, val static: List<Int> = Collections.emptyList())
+data class Data<TItem>(val items: List<TItem>, val static: List<Int> = Collections.emptyList())

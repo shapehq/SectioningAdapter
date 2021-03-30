@@ -44,12 +44,10 @@ class ExampleActivityKotlin : AppCompatActivity() {
         private const val UPDATE_INCREMENT = "update_increment"
     }
 
-    private val items = ArrayList<Item>()
-
     private val disposables = CompositeDisposable()
 
     @Inject
-    lateinit var dataSource: DataSource
+    lateinit var dataSource: DataSource<Item>
 
     private val sectioningAdapter = Adapter()
 
@@ -82,9 +80,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
         disposables += dataSource.data()
             .subscribe { data ->
-                for (s in data.static) {
-                    sectioningAdapter.state()
-                }
+              sectioningAdapter.setItems(data.items)
             }
 
         buttonShuffle.setOnClickListener {
