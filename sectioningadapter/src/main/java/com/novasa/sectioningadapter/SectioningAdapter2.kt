@@ -2,14 +2,12 @@ package com.novasa.sectioningadapter
 
 import android.content.Context
 import android.os.Handler
-import android.os.SystemClock
+import android.os.Looper
 import android.util.SparseArray
-import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.*
-import java.lang.IllegalStateException
 
-abstract class SectioningAdapter2<TItem : Any, TSectionKey : Any> : RecyclerView.Adapter<SectioningAdapter2.BaseViewHolder<TItem, TSectionKey>>() {
+abstract class SectioningAdapter2<TViewHolder : RecyclerView.ViewHolder, TItem : Any, TSectionKey : Any> : RecyclerView.Adapter<TViewHolder>() {
 
     interface Entry<TItem : Any, TSectionKey : Any> {
         val viewType: Int
@@ -106,7 +104,7 @@ abstract class SectioningAdapter2<TItem : Any, TSectionKey : Any> : RecyclerView
     open fun areContentsTheSame(oldItem: TItem, newItem: TItem) = oldItem == newItem
 
 
-    private val updateHandler = Handler()
+    private val updateHandler = Handler(Looper.getMainLooper())
 
     private val differ = AsyncListDiffer(listUpdateCallback, AsyncDifferConfig.Builder(differItemCallback).build())
 
@@ -127,11 +125,24 @@ abstract class SectioningAdapter2<TItem : Any, TSectionKey : Any> : RecyclerView
 
         fun addSectionEntries(section: Section<TItem, TSectionKey>, depth: Int) {
             section.depth = depth
+
+            for (headerIndex in 0 until getHeaderCountForSection(section)) {
+                val viewType = getHeaderViewTypeForSection(section, headerIndex)
+                val header = NonItem(NonItem.TYPE_HEADER, headerIndex, section, viewType)
+                add(header)
+            }
+
             for (entry in section.entries) {
                 when (entry) {
                     is Section -> addSectionEntries(entry, depth + 1)
                     else -> add(entry)
                 }
+            }
+
+            for (footerIndex in 0 until getFooterCountForSection(section)) {
+                val viewType = getFooterViewTypeForSection(section, footerIndex)
+                val header = NonItem(NonItem.TYPE_FOOTER, footerIndex, section, viewType)
+                add(header)
             }
         }
 
@@ -164,9 +175,9 @@ abstract class SectioningAdapter2<TItem : Any, TSectionKey : Any> : RecyclerView
     fun addItems(items: List<TItem>) {
 
         fun getOrCreateSection(key: TSectionKey): Section<TItem, TSectionKey> {
-            val parentKey = getParentSectionKeyForSectionKey(key)
+            val parentKey = getParentSectionKeyForSection(key)
             return sectionsMap.getOrPut(key) {
-                Section<TItem, TSectionKey>(key, parentKey, getItemViewTypeForSectionKey(key)).also { section ->
+                Section<TItem, TSectionKey>(key, parentKey, getItemViewTypeForSection(key)).also { section ->
                     parentKey?.let { getOrCreateSection(it) }?.entries?.add(section)
                         ?: sections.add(section)
                 }
@@ -185,15 +196,24 @@ abstract class SectioningAdapter2<TItem : Any, TSectionKey : Any> : RecyclerView
 
     fun getItemAtPosition(adapterPosition: Int): TItem? = (currentContent[adapterPosition] as? ItemWrapper)?.item
 
-    abstract fun getSectionKeyForItem(item: TItem): TSectionKey?
+    protected abstract fun getSectionKeyForItem(item: TItem): TSectionKey?
 
-    open fun getParentSectionKeyForSectionKey(key: TSectionKey): TSectionKey? = null
+    protected open fun getParentSectionKeyForSection(key: TSectionKey): TSectionKey? = null
 
-    open fun getItemViewTypeForSectionKey(key: TSectionKey): Int = 0
+    protected open fun getItemViewTypeForSection(key: TSectionKey): Int = 0
 
+    protected open fun getHeaderCountForSection(section: Section<TItem, TSectionKey>): Int = 0
+
+    protected open fun getHeaderViewTypeForSection(section: Section<TItem, TSectionKey>, headerIndex: Int): Int =
+        throw NotImplementedError("Must override getHeaderViewTypeForSection() if getHeaderCountForSection() returns > 0")
+
+
+    protected open fun getFooterCountForSection(section: Section<TItem, TSectionKey>): Int = 0
+
+    protected open fun getFooterViewTypeForSection(section: Section<TItem, TSectionKey>, footerIndex: Int): Int =
+        throw NotImplementedError("Must override getFooterViewTypeForSection() if getFooterCountForSection() returns > 0")
 
     // region Sorting
-
 
 
     private val itemComparators: HashMap<TSectionKey, Comparator<TItem>> by lazy {
@@ -252,26 +272,28 @@ abstract class SectioningAdapter2<TItem : Any, TSectionKey : Any> : RecyclerView
 
     final override fun getItemViewType(position: Int): Int = currentContent[position].viewType
 
-    final override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BaseViewHolder<TItem, TSectionKey> = onCreateViewHolder(parent.context, parent, viewType)
+    final override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = onCreateViewHolder(parent.context, parent, viewType)
 
-    abstract fun onCreateViewHolder(context: Context, parent: ViewGroup, viewType: Int): BaseViewHolder<TItem, TSectionKey>
+    abstract fun onCreateViewHolder(context: Context, parent: ViewGroup, viewType: Int): TViewHolder
 
-    override fun onBindViewHolder(holder: BaseViewHolder<TItem, TSectionKey>, position: Int) {
+    @Suppress("UNCHECKED_CAST")
+    override fun onBindViewHolder(holder: TViewHolder, position: Int) {
         val entry = currentContent[position]
-        holder.bind(position, entry)
+
+        (holder as? BaseViewHolder<TItem, TSectionKey>)?.bind(position, entry)
     }
 
     // endregion
 
 
-    open class BaseViewHolder<TItem : Any, TSectionKey : Any>(itemView: View) : RecyclerView.ViewHolder(itemView) {
+    // View Holder
 
-        open fun bind(adapterPosition: Int, entry: Entry<TItem, TSectionKey>) {
+    interface BaseViewHolder<TItem : Any, TSectionKey : Any> {
 
-        }
+        fun bind(adapterPosition: Int, entry: Entry<TItem, TSectionKey>)
     }
 
-    open class SectionViewHolder<TItem : Any, TSectionKey : Any>(itemView: View) : BaseViewHolder<TItem, TSectionKey>(itemView) {
+    interface SectionViewHolder<TItem : Any, TSectionKey : Any> : BaseViewHolder<TItem, TSectionKey> {
 
         override fun bind(adapterPosition: Int, entry: Entry<TItem, TSectionKey>) {
             (entry as? NonItem)?.section ?: (entry as? ItemWrapper)?.section?.let {
@@ -279,21 +301,19 @@ abstract class SectioningAdapter2<TItem : Any, TSectionKey : Any> : RecyclerView
             } ?: throw IllegalStateException("Section view holder was used for entry with no section associated")
         }
 
-        open fun bind(adapterPosition: Int, section: Section<TItem, TSectionKey>) {
-
-        }
+        fun bind(adapterPosition: Int, section: Section<TItem, TSectionKey>)
     }
 
-    open class ItemViewHolder<TItem : Any, TSectionKey : Any>(itemView: View) : BaseViewHolder<TItem, TSectionKey>(itemView) {
+    interface ItemViewHolder<TItem : Any, TSectionKey : Any> : BaseViewHolder<TItem, TSectionKey> {
 
-        final override fun bind(adapterPosition: Int, entry: Entry<TItem, TSectionKey>) {
+        override fun bind(adapterPosition: Int, entry: Entry<TItem, TSectionKey>) {
             (entry as? ItemWrapper)?.let {
                 bind(adapterPosition, it.section, it.item)
             } ?: throw IllegalStateException("Item view holder was used for entry with no item associated")
         }
 
-        open fun bind(adapterPosition: Int, section: Section<TItem, TSectionKey>, item: TItem) {
-
-        }
+        fun bind(adapterPosition: Int, section: Section<TItem, TSectionKey>, item: TItem)
     }
+
+    // endregion
 }

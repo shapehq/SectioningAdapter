@@ -107,17 +107,15 @@ class ExampleActivity2Kotlin : AppCompatActivity() {
 
     data class Key(val type: String, val section: Int)
 
-    class Adapter : SectioningAdapter2<TypedItem, Key>() {
+    class Adapter : SectioningAdapter2<RecyclerView.ViewHolder, TypedItem, Key>() {
 
-        override fun getSectionKeyForItem(item: TypedItem): Key? {
-            return Key(item.type, item.section)
-        }
+        override fun getSectionKeyForItem(item: TypedItem): Key = Key(item.type, item.section)
 
-        override fun getParentSectionKeyForSectionKey(key: Key): Key? = if (key.section > 0) {
+        override fun getParentSectionKeyForSection(key: Key): Key? = if (key.section > 0) {
             Key(key.type, -1)
         } else null
 
-        override fun getItemViewTypeForSectionKey(key: Key): Int {
+        override fun getItemViewTypeForSection(key: Key): Int {
             return VIEW_TYPE_ITEM
         }
 
@@ -130,15 +128,12 @@ class ExampleActivity2Kotlin : AppCompatActivity() {
             }
         }
 
-        class ItemViewHolder(private val binding: CellItemBinding) : RecyclerView.ViewHolder(binding.root) {
+        class ItemViewHolder(private val binding: CellItemBinding) : RecyclerView.ViewHolder(binding.root), SectioningAdapter2.ItemViewHolder<TypedItem, Key> {
 
-//            override fun bind(adapterPosition: Int, section: Section<TypedItem, Key>, item: TypedItem) {
-//                super.bind(adapterPosition, section, item)
-//
-//                itemView.apply {
-//                    itemTitle.text = "[${item.section}] Item ${item.id}"
-//                }
-//            }
+            override fun bind(adapterPosition: Int, section: Section<TypedItem, Key>, item: TypedItem) {
+
+                binding.itemTitle.text = "[${item.section}] Item ${item.id}"
+            }
         }
     }
 }
