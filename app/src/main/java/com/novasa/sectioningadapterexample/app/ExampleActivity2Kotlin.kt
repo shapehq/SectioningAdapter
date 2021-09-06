@@ -8,16 +8,17 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.novasa.sectioningadapter.SectioningAdapter2
 import com.novasa.sectioningadapterexample.R
 import com.novasa.sectioningadapterexample.data.DataSource
 import com.novasa.sectioningadapterexample.data.Item
 import com.novasa.sectioningadapterexample.data.TypedItem
+import com.novasa.sectioningadapterexample.databinding.ActivityMainBinding
+import com.novasa.sectioningadapterexample.databinding.CellItemBinding
 import dagger.android.AndroidInjection
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.plusAssign
-import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.android.synthetic.main.cell_item.view.*
 import javax.inject.Inject
 
 @SuppressLint("SetTextI18n")
@@ -51,35 +52,39 @@ class ExampleActivity2Kotlin : AppCompatActivity() {
 
         AndroidInjection.inject(this)
 
-        setContentView(R.layout.activity_main)
+        val binding = ActivityMainBinding.inflate(layoutInflater)
+
+        setContentView(binding.root)
 
         val context = this
 
-        recyclerView.apply {
-            layoutManager = LinearLayoutManager(context)
-            adapter = sectioningAdapter
+        binding.apply {
+            recyclerView.apply {
+                layoutManager = LinearLayoutManager(context)
+                adapter = sectioningAdapter
+            }
+
+            buttonShuffle.setOnClickListener {
+                shuffle()
+            }
+
+            buttonSet.setOnClickListener {
+                setItems()
+            }
+
+            buttonAdd.setOnClickListener {
+                addItems()
+            }
+
+            buttonRemove.setOnClickListener {
+                removeItems()
+            }
         }
 
         disposables += dataSource.data()
             .subscribe { data ->
                 sectioningAdapter.setItems(data.items)
             }
-
-        buttonShuffle.setOnClickListener {
-            shuffle()
-        }
-
-        buttonSet.setOnClickListener {
-            setItems()
-        }
-
-        buttonAdd.setOnClickListener {
-            addItems()
-        }
-
-        buttonRemove.setOnClickListener {
-            removeItems()
-        }
     }
 
     private fun shuffle() {
@@ -116,24 +121,24 @@ class ExampleActivity2Kotlin : AppCompatActivity() {
             return VIEW_TYPE_ITEM
         }
 
-        override fun onCreateViewHolder(context: Context, parent: ViewGroup, viewType: Int): BaseViewHolder<TypedItem, Key> {
+        override fun onCreateViewHolder(context: Context, parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val inflater = LayoutInflater.from(context)
 
             return when (viewType) {
-                VIEW_TYPE_ITEM -> ItemViewHolder(inflater.inflate(R.layout.cell_item, parent, false))
+                VIEW_TYPE_ITEM -> ItemViewHolder(CellItemBinding.inflate(inflater))
                 else -> throw IllegalArgumentException()
             }
         }
 
-        class ItemViewHolder(itemView: View) : SectioningAdapter2.ItemViewHolder<TypedItem, Key>(itemView) {
+        class ItemViewHolder(private val binding: CellItemBinding) : RecyclerView.ViewHolder(binding.root) {
 
-            override fun bind(adapterPosition: Int, section: Section<TypedItem, Key>, item: TypedItem) {
-                super.bind(adapterPosition, section, item)
-
-                itemView.apply {
-                    itemTitle.text = "[${item.section}] Item ${item.id}"
-                }
-            }
+//            override fun bind(adapterPosition: Int, section: Section<TypedItem, Key>, item: TypedItem) {
+//                super.bind(adapterPosition, section, item)
+//
+//                itemView.apply {
+//                    itemTitle.text = "[${item.section}] Item ${item.id}"
+//                }
+//            }
         }
     }
 }

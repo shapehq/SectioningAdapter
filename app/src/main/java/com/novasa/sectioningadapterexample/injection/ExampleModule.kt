@@ -8,7 +8,7 @@ import io.reactivex.Observable
 import kotlin.random.Random
 
 @Module
-abstract class ExampleModule {
+class ExampleModule {
 
     @Provides
     fun provideItemDataSource(): DataSource<Item> = object : DataSource<Item> {

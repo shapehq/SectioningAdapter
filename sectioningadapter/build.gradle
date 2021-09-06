@@ -1,40 +1,15 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
-apply plugin: 'com.jfrog.bintray'
-apply plugin: 'com.github.dcendents.android-maven'
 
 def vCode = 35
 def vName = '1.2.4'
 
-ext {
-    bintrayRepo = 'Novasa'
-    bintrayName = 'com.novasa.sectioningadapter'
-
-    libraryName = 'sectioningadapter'
-
-    publishedGroupId = 'com.novasa'
-    artifact = 'sectioningadapter'
-    libraryVersion = vName
-    libraryDescription = 'A RecyclerView adapter that can sort items into sections.'
-
-    siteUrl = 'https://github.com/Novasa/SectioningAdapter'
-    gitUrl = 'https://github.com/Novasa/SectioningAdapter.git'
-
-    developerId = 'mhswtf'
-    developerName = 'Mikkel Schläger'
-    developerEmail = 'mikkel@novasa.com'
-
-    licenseName = 'The Apache Software License, Version 2.0'
-    licenseUrl = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-    allLicenses = ["Apache-2.0"]
-}
-
 android {
-    compileSdkVersion 29
+    compileSdkVersion 30
 
     defaultConfig {
         minSdkVersion 16
-        targetSdkVersion 29
+        targetSdkVersion 30
         versionCode vCode
         versionName vName
     }
@@ -49,19 +24,5 @@ android {
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation 'androidx.recyclerview:recyclerview:1.1.0'
-}
-
-repositories {
-    mavenCentral()
-}
-
-if (project.rootProject.file('local.properties').exists()) {
-    // local.properties is not committed
-    // go to bintray.com -> login -> edit profile -> API key
-    // Format: (no brackets)
-    // bintray.user=[USERNAME]
-    // bintray.apikey=[API KEY]
-    apply from: 'https://raw.githubusercontent.com/nuuneoi/JCenter/master/installv1.gradle'
-    apply from: 'https://raw.githubusercontent.com/nuuneoi/JCenter/master/bintrayv1.gradle'
+    implementation 'androidx.recyclerview:recyclerview:1.2.1'
 }
