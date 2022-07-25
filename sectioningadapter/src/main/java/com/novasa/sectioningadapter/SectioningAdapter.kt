@@ -2,6 +2,7 @@ package com.novasa.sectioningadapter
 
 import android.content.Context
 import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.util.SparseArray
 import android.view.View
@@ -21,7 +22,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
     private val name: String
         get() = this.javaClass.name
 
-    private val updateHandler = Handler()
+    private val updateHandler = Handler(Looper.getMainLooper())
 
     // region Diff
 
@@ -90,7 +91,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
         }
     }
 
-    private val differ = AsyncListDiffer<Wrapper<TItem, TSectionKey>>(
+    private val differ = AsyncListDiffer(
         listUpdateCallback,
         AsyncDifferConfig.Builder(differItemCallback).build()
     ).apply {
@@ -435,7 +436,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
      *
      * This includes items in collapsed sections.
      */
-    fun getTotalItemCount(): Int = sections.sumBy { section ->
+    fun getTotalItemCount(): Int = sections.sumOf { section ->
         section.itemCount
     }
 
@@ -1038,18 +1039,18 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
     // region Sorting
 
     private val sectionComparator: Comparator<Section> by lazy {
-        Comparator<Section> { o1, o2 ->
+        Comparator { o1, o2 ->
             compareSectionKeys(o1.key, o2.key)
         }
     }
 
     private val itemComparators: HashMap<TSectionKey, Comparator<TItem>> by lazy {
-        HashMap<TSectionKey, Comparator<TItem>>()
+        HashMap()
     }
 
     private fun itemComparator(key: TSectionKey): Comparator<TItem> =
         itemComparators.getOrPut(key) {
-            Comparator<TItem> { o1, o2 ->
+            Comparator { o1, o2 ->
                 compareItems(key, o1, o2)
             }
         }
@@ -1760,7 +1761,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
 
         protected fun getSectionKey(): TSectionKey? {
             @Suppress("UNCHECKED_CAST")
-            return if (adapterPosition >= 0) currentContent[adapterPosition].sectionKey else null
+            return if (bindingAdapterPosition >= 0) currentContent[bindingAdapterPosition].sectionKey else null
         }
     }
 
@@ -1795,7 +1796,7 @@ abstract class SectioningAdapter<TItem : Any, TSectionKey : Any> :
             bind(adapterPosition, sectionKey, item)
         }
 
-        protected fun getItem(): TItem? = getItem(adapterPosition)
+        protected fun getItem(): TItem? = getItem(bindingAdapterPosition)
     }
 
     // endregion
