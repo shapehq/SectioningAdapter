@@ -6,6 +6,10 @@ import android.os.Looper
 import android.util.SparseArray
 import android.view.ViewGroup
 import androidx.recyclerview.widget.*
+import java.util.*
+import kotlin.Comparator
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 
 abstract class SectioningAdapter2<TViewHolder : RecyclerView.ViewHolder, TItem : Any, TSectionKey : Any> : RecyclerView.Adapter<TViewHolder>() {
 
@@ -276,10 +280,13 @@ abstract class SectioningAdapter2<TViewHolder : RecyclerView.ViewHolder, TItem :
 
     abstract fun onCreateViewHolder(context: Context, parent: ViewGroup, viewType: Int): TViewHolder
 
-    @Suppress("UNCHECKED_CAST")
-    override fun onBindViewHolder(holder: TViewHolder, position: Int) {
+    final override fun onBindViewHolder(holder: TViewHolder, position: Int) {
         val entry = currentContent[position]
+        onBindViewHolder(holder, entry, position)
+    }
 
+    @Suppress("UNCHECKED_CAST")
+    open fun onBindViewHolder(holder: TViewHolder, entry: Entry<TItem, TSectionKey>, position: Int) {
         (holder as? BaseViewHolder<TItem, TSectionKey>)?.bind(position, entry)
     }
 

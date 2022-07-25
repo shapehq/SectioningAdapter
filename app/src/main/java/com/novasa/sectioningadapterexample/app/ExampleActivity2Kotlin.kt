@@ -15,6 +15,8 @@ import com.novasa.sectioningadapterexample.data.DataSource
 import com.novasa.sectioningadapterexample.data.Item
 import com.novasa.sectioningadapterexample.data.TypedItem
 import com.novasa.sectioningadapterexample.databinding.ActivityMainBinding
+import com.novasa.sectioningadapterexample.databinding.CellHeader2Binding
+import com.novasa.sectioningadapterexample.databinding.CellHeaderBinding
 import com.novasa.sectioningadapterexample.databinding.CellItemBinding
 import dagger.android.AndroidInjection
 import io.reactivex.disposables.CompositeDisposable
@@ -115,15 +117,19 @@ class ExampleActivity2Kotlin : AppCompatActivity() {
             Key(key.type, -1)
         } else null
 
-        override fun getItemViewTypeForSection(key: Key): Int {
-            return VIEW_TYPE_ITEM
-        }
+        override fun getItemViewTypeForSection(key: Key): Int = VIEW_TYPE_ITEM
+
+        override fun getHeaderCountForSection(section: Section<TypedItem, Key>): Int = 1
+
+        override fun getHeaderViewTypeForSection(section: Section<TypedItem, Key>, headerIndex: Int): Int = if (section.key.section > 0) VIEW_TYPE_GLOBAL_HEADER_2 else VIEW_TYPE_GLOBAL_HEADER_1
 
         override fun onCreateViewHolder(context: Context, parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val inflater = LayoutInflater.from(context)
 
             return when (viewType) {
                 VIEW_TYPE_ITEM -> ItemViewHolder(CellItemBinding.inflate(inflater))
+                VIEW_TYPE_GLOBAL_HEADER_1 -> Header1ViewHolder(CellHeaderBinding.inflate(inflater))
+                VIEW_TYPE_GLOBAL_HEADER_2 -> Header2ViewHolder(CellHeader2Binding.inflate(inflater))
                 else -> throw IllegalArgumentException()
             }
         }
@@ -131,8 +137,21 @@ class ExampleActivity2Kotlin : AppCompatActivity() {
         class ItemViewHolder(private val binding: CellItemBinding) : RecyclerView.ViewHolder(binding.root), SectioningAdapter2.ItemViewHolder<TypedItem, Key> {
 
             override fun bind(adapterPosition: Int, section: Section<TypedItem, Key>, item: TypedItem) {
-
                 binding.itemTitle.text = "[${item.section}] Item ${item.id}"
+            }
+        }
+
+        class Header1ViewHolder(private val binding: CellHeaderBinding) : RecyclerView.ViewHolder(binding.root), SectionViewHolder<TypedItem, Key> {
+
+            override fun bind(adapterPosition: Int, section: Section<TypedItem, Key>) {
+                binding.itemHeader.text = section.key.type
+            }
+        }
+
+        class Header2ViewHolder(private val binding: CellHeader2Binding) : RecyclerView.ViewHolder(binding.root), SectionViewHolder<TypedItem, Key> {
+
+            override fun bind(adapterPosition: Int, section: Section<TypedItem, Key>) {
+                binding.itemHeader.text = "Section $section.key.section"
             }
         }
     }
