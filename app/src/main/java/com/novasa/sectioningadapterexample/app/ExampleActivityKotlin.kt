@@ -5,22 +5,16 @@ import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.novasa.sectioningadapter.SectioningAdapter
-import com.novasa.sectioningadapterexample.R
 import com.novasa.sectioningadapterexample.data.DataSource
 import com.novasa.sectioningadapterexample.data.Item
+import com.novasa.sectioningadapterexample.databinding.*
 import dagger.android.AndroidInjection
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.plusAssign
-import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.android.synthetic.main.cell_header.view.*
-import kotlinx.android.synthetic.main.cell_item.view.*
-import kotlinx.android.synthetic.main.cell_no_content.view.*
-import java.lang.RuntimeException
 import java.util.ArrayList
 import javax.inject.Inject
 import kotlin.random.Random
@@ -51,6 +45,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
     @Inject
     lateinit var dataSource: DataSource
 
+    private lateinit var binding: ActivityMainBinding
     private val sectioningAdapter = Adapter()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,11 +53,13 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
         AndroidInjection.inject(this)
 
-        setContentView(R.layout.activity_main)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+
+        setContentView(binding.root)
 
         val context = this
 
-        with(recyclerView) {
+        with(binding.recyclerView) {
             layoutManager = LinearLayoutManager(context)
             adapter = sectioningAdapter
         }
@@ -87,19 +84,19 @@ class ExampleActivityKotlin : AppCompatActivity() {
                 }
             }
 
-        buttonShuffle.setOnClickListener {
+        binding.buttonShuffle.setOnClickListener {
             shuffle()
         }
 
-        buttonSet.setOnClickListener {
+        binding.buttonSet.setOnClickListener {
             setItems()
         }
 
-        buttonAdd.setOnClickListener {
+        binding.buttonAdd.setOnClickListener {
             addItems()
         }
 
-        buttonRemove.setOnClickListener {
+        binding.buttonRemove.setOnClickListener {
             removeItems()
         }
     }
@@ -165,16 +162,14 @@ class ExampleActivityKotlin : AppCompatActivity() {
             val inflater = LayoutInflater.from(context)
 
             return when (viewType) {
-                VIEW_TYPE_GLOBAL_HEADER_1 -> GlobalHeaderViewHolder(inflater.inflate(R.layout.cell_header, parent, false))
-                VIEW_TYPE_GLOBAL_HEADER_2 -> GlobalHeaderViewHolder(inflater.inflate(R.layout.cell_header_2, parent, false))
-                VIEW_TYPE_GLOBAL_FOOTER -> GlobalFooterViewHolder(inflater.inflate(R.layout.cell_footer, parent, false))
-                VIEW_TYPE_SECTION_HEADER -> SectionHeaderViewHolder(inflater.inflate(R.layout.cell_header, parent, false))
-                VIEW_TYPE_SECTION_FOOTER -> SectionFooterViewHolder(inflater.inflate(R.layout.cell_footer, parent, false))
-                VIEW_TYPE_SECTION_NO_CONTENT -> SectionNoContentViewHolder(inflater.inflate(R.layout.cell_no_content, parent, false))
-                VIEW_TYPE_ITEM -> ItemViewHolder(
-                    inflater.inflate(R.layout.cell_item, parent, false)
-                )
-                VIEW_TYPE_GLOBAL_NO_CONTENT -> BaseViewHolder(inflater.inflate(R.layout.cell_no_content, parent, false))
+                VIEW_TYPE_GLOBAL_HEADER_1 -> GlobalHeaderViewHolder(CellHeaderBinding.inflate(inflater, parent, false))
+                VIEW_TYPE_GLOBAL_HEADER_2 -> GlobalHeaderViewHolder(CellHeaderBinding.inflate(inflater, parent, false))
+                VIEW_TYPE_GLOBAL_FOOTER -> GlobalFooterViewHolder(CellFooterBinding.inflate(inflater, parent, false))
+                VIEW_TYPE_SECTION_HEADER -> SectionHeaderViewHolder(CellHeaderBinding.inflate(inflater, parent, false))
+                VIEW_TYPE_SECTION_FOOTER -> SectionFooterViewHolder(CellFooterBinding.inflate(inflater, parent, false))
+                VIEW_TYPE_SECTION_NO_CONTENT -> SectionNoContentViewHolder(CellNoContentBinding.inflate(inflater, parent, false))
+                VIEW_TYPE_ITEM -> ItemViewHolder(CellItemBinding.inflate(inflater, parent, false))
+                VIEW_TYPE_GLOBAL_NO_CONTENT -> BaseViewHolder(CellNoContentBinding.inflate(inflater, parent, false).root)
                 else -> throw IllegalArgumentException()
             }
         }
@@ -183,7 +178,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
         override fun getGlobalNoContentViewType(): Int = VIEW_TYPE_GLOBAL_NO_CONTENT
 
-        override fun getSectionKeyForItem(item: Item): Int? = item.section
+        override fun getSectionKeyForItem(item: Item): Int = item.section
 
         override fun getHeaderCountForSection(sectionKey: Int): Int = 1
 
@@ -211,9 +206,9 @@ class ExampleActivityKotlin : AppCompatActivity() {
         override fun compareItems(sectionKey: Int, item1: Item, item2: Item): Int =
             item1.id.compareTo(item2.id)
 
-        inner class GlobalHeaderViewHolder(view: View) : BaseViewHolder(view) {
+        inner class GlobalHeaderViewHolder(private val binding: CellHeaderBinding) : BaseViewHolder(binding.root) {
             init {
-                itemView.setOnClickListener {
+                binding.root.setOnClickListener {
                     notifyGlobalHeaderChanged(0, "Hello")
                     notifyGlobalFooterChanged(0, "BORK")
                     toggleExpandAllSections()
@@ -221,21 +216,21 @@ class ExampleActivityKotlin : AppCompatActivity() {
             }
 
             override fun bind(adapterPosition: Int) {
-                itemView.itemHeader.text = "Global Header"
+                binding.itemHeader.text = "Global Header"
             }
 
             override fun partialBind(adapterPosition: Int, payloads: MutableList<Any>) {
                 if (payloads.isNotEmpty()) {
-                    itemView.itemHeader.text = payloads.first().toString()
+                    binding.itemHeader.text = payloads.first().toString()
                 }
             }
         }
 
-        inner class GlobalFooterViewHolder(view: View) : BaseViewHolder(view) {
+        inner class GlobalFooterViewHolder(private val binding: CellFooterBinding) : BaseViewHolder(binding.root) {
             init {
-                with(itemView) {
+                with(binding) {
                     itemHeader.text = "Global Footer"
-                    setOnClickListener {
+                    root.setOnClickListener {
                         collapseAllSections()
                         notifyGlobalFooterChanged(0, "BORK")
                     }
@@ -244,15 +239,15 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
             override fun partialBind(adapterPosition: Int, payloads: MutableList<Any>) {
                 if (payloads.isNotEmpty()) {
-                    itemView.itemHeader.text = payloads.first().toString()
+                    binding.itemHeader.text = payloads.first().toString()
                 }
             }
         }
 
-        inner class SectionHeaderViewHolder(view: View) : SectionViewHolder(view) {
+        inner class SectionHeaderViewHolder(private val binding: CellHeaderBinding) : SectionViewHolder(binding.root) {
 
             init {
-                with(itemView) {
+                with(binding.root) {
                     setOnClickListener {
                         requestFocus()
                         getSectionKey()?.let {
@@ -264,7 +259,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
             }
 
             override fun bind(adapterPosition: Int, sectionKey: Int) {
-                with(itemView) {
+                with(binding) {
                     itemHeader.text = "Section $sectionKey"
                 }
             }
@@ -275,25 +270,25 @@ class ExampleActivityKotlin : AppCompatActivity() {
                 payloads: MutableList<Any>
             ) {
                 if (payloads.isNotEmpty()) {
-                    itemView.itemHeader.text = payloads.first().toString()
+                    binding.itemHeader.text = payloads.first().toString()
                 }
             }
         }
 
-        inner class SectionFooterViewHolder(view: View) : SectionViewHolder(view) {
+        inner class SectionFooterViewHolder(private val binding: CellFooterBinding) : SectionViewHolder(binding.root) {
 
             override fun bind(adapterPosition: Int, sectionKey: Int) {
-                with(itemView) {
+                with(binding) {
                     itemHeader.text = "Total item count: ${getItemCountForSection(sectionKey)}"
                 }
             }
         }
 
-        inner class SectionNoContentViewHolder(view: View) : SectionViewHolder(view) {
+        inner class SectionNoContentViewHolder(private val binding: CellNoContentBinding) : SectionViewHolder(binding.root) {
 
             init {
-                with(itemView) {
-                    setOnClickListener {
+                with(binding) {
+                    root.setOnClickListener {
                         getSectionKey()?.let {
                             notifyStaticSectionNoContentChanged(it, " blugr")
                         }
@@ -302,7 +297,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
             }
 
             override fun bind(adapterPosition: Int, sectionKey: Int) {
-                with(itemView) {
+                with(binding) {
                     noContent.text = "Section $sectionKey is empty"
                 }
             }
@@ -312,7 +307,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
                 sectionKey: Int,
                 payloads: MutableList<Any>
             ) {
-                with(itemView) {
+                with(binding) {
                     if (payloads.isNotEmpty()) {
                         noContent.text = noContent.text.toString() + payloads.first().toString()
                     }
@@ -320,10 +315,10 @@ class ExampleActivityKotlin : AppCompatActivity() {
             }
         }
 
-        inner class ItemViewHolder(view: View) : SectionItemViewHolder(view) {
+        inner class ItemViewHolder(private val binding: CellItemBinding) : SectionItemViewHolder(binding.root) {
 
             init {
-                itemView.setOnClickListener {
+                binding.root.setOnClickListener {
                     getItem()?.let {
                         it.id++
                         notifyItemChanged(it, UPDATE_INCREMENT)
@@ -332,7 +327,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
             }
 
             override fun bind(adapterPosition: Int, sectionKey: Int, item: Item) {
-                with(itemView) {
+                with(binding) {
                     itemTitle.text = "[${item.section}] Item ${item.id}"
                 }
             }
@@ -343,7 +338,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
                 item: Item,
                 payloads: MutableList<Any>
             ) {
-                with(itemView) {
+                with(binding) {
                     payloads.forEach {
                         when (it) {
                             UPDATE_INCREMENT -> {
