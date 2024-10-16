@@ -2,7 +2,7 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'maven-publish'
 
-def libraryVersion = "1.2.8-SNAPSHOT"
+def libraryVersion = "1.2.8"
 def libraryGroupId = "dk.shape.library"
 def libraryArtifactId = "sectioning-adapter"
 
