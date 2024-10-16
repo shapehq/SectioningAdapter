@@ -26,14 +26,15 @@ class ExampleActivityKotlin : AppCompatActivity() {
         private const val TAG = "SectioningAdapter"
 
 
-        private const val VIEW_TYPE_ITEM = 1
-        private const val VIEW_TYPE_SECTION_HEADER = 2
-        private const val VIEW_TYPE_SECTION_FOOTER = 3
-        private const val VIEW_TYPE_SECTION_NO_CONTENT = 4
-        private const val VIEW_TYPE_GLOBAL_HEADER_1 = 5
-        private const val VIEW_TYPE_GLOBAL_HEADER_2 = 6
-        private const val VIEW_TYPE_GLOBAL_FOOTER = 7
-        private const val VIEW_TYPE_GLOBAL_NO_CONTENT = 8
+        private const val VIEW_TYPE_ITEM_TYPE_1 = 1
+        private const val VIEW_TYPE_ITEM_TYPE_2 = 2
+        private const val VIEW_TYPE_SECTION_HEADER = 3
+        private const val VIEW_TYPE_SECTION_FOOTER = 4
+        private const val VIEW_TYPE_SECTION_NO_CONTENT = 5
+        private const val VIEW_TYPE_GLOBAL_HEADER_1 = 6
+        private const val VIEW_TYPE_GLOBAL_HEADER_2 = 7
+        private const val VIEW_TYPE_GLOBAL_FOOTER = 8
+        private const val VIEW_TYPE_GLOBAL_NO_CONTENT = 9
 
         private const val UPDATE_INCREMENT = "update_increment"
     }
@@ -168,9 +169,10 @@ class ExampleActivityKotlin : AppCompatActivity() {
                 VIEW_TYPE_SECTION_HEADER -> SectionHeaderViewHolder(CellHeaderBinding.inflate(inflater, parent, false))
                 VIEW_TYPE_SECTION_FOOTER -> SectionFooterViewHolder(CellFooterBinding.inflate(inflater, parent, false))
                 VIEW_TYPE_SECTION_NO_CONTENT -> SectionNoContentViewHolder(CellNoContentBinding.inflate(inflater, parent, false))
-                VIEW_TYPE_ITEM -> ItemViewHolder(CellItemBinding.inflate(inflater, parent, false))
+                VIEW_TYPE_ITEM_TYPE_1 -> Item1ViewHolder(CellItem1Binding.inflate(inflater, parent, false))
+                VIEW_TYPE_ITEM_TYPE_2 -> Item2ViewHolder(CellItem2Binding.inflate(inflater, parent, false))
                 VIEW_TYPE_GLOBAL_NO_CONTENT -> BaseViewHolder(CellNoContentBinding.inflate(inflater, parent, false).root)
-                else -> throw IllegalArgumentException()
+                else -> throw IllegalArgumentException("Invalid view type: $viewType")
             }
         }
 
@@ -184,7 +186,10 @@ class ExampleActivityKotlin : AppCompatActivity() {
 
         override fun getFooterCountForSection(sectionKey: Int): Int = 0
 
-        override fun getItemViewTypeForSection(sectionKey: Int): Int = VIEW_TYPE_ITEM
+        override fun getItemViewTypeForItemInSection(sectionKey: Int, item: Item): Int = when (item.id % 2) {
+            0 -> VIEW_TYPE_ITEM_TYPE_1
+            else -> VIEW_TYPE_ITEM_TYPE_2
+        }
 
         override fun getHeaderViewTypeForSection(sectionKey: Int, headerIndex: Int): Int =
             VIEW_TYPE_SECTION_HEADER
@@ -315,7 +320,7 @@ class ExampleActivityKotlin : AppCompatActivity() {
             }
         }
 
-        inner class ItemViewHolder(private val binding: CellItemBinding) : SectionItemViewHolder(binding.root) {
+        inner class Item1ViewHolder(private val binding: CellItem1Binding) : SectionItemViewHolder(binding.root) {
 
             init {
                 binding.root.setOnClickListener {
@@ -346,6 +351,14 @@ class ExampleActivityKotlin : AppCompatActivity() {
                             }
                         }
                     }
+                }
+            }
+        }
+
+        inner class Item2ViewHolder(private val binding: CellItem2Binding) : SectionItemViewHolder(binding.root) {
+            override fun bind(adapterPosition: Int, sectionKey: Int, item: Item) {
+                with(binding) {
+                    itemTitle.text = "[${item.section}] Item ${item.id}"
                 }
             }
         }
