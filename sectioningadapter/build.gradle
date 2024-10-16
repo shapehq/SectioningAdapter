@@ -2,6 +2,10 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'maven-publish'
 
+def libraryVersion = "1.2.8-SNAPSHOT"
+def libraryGroupId = "dk.shape.library"
+def libraryArtifactId = "sectioning-adapter"
+
 android {
     namespace = "com.novasa.sectioningadapter"
     compileSdkVersion = 35
@@ -26,6 +30,13 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+    publishing {
+        singleVariant("release") {
+            withJavadocJar()
+            withSourcesJar()
+        }
+    }
 }
 
 dependencies {
@@ -34,12 +45,36 @@ dependencies {
     api 'androidx.recyclerview:recyclerview:1.3.2'
 }
 
-project.afterEvaluate {
-    publishing {
-        publications {
-            release(MavenPublication) {
+publishing {
+    publications {
+        release(MavenPublication) {
+            groupId = libraryGroupId
+            artifactId = libraryArtifactId
+            version = libraryVersion
+            afterEvaluate {
                 from components.release
             }
         }
     }
+    repositories {
+        maven {
+            if (libraryVersion.endsWith("-SNAPSHOT")) {
+                url = uri("https://shape.jfrog.io/artifactory/shape-libs-snapshot")
+            } else {
+                url = uri("https://shape.jfrog.io/artifactory/shape-libs-release")
+            }
+            name = 'shapeArtifactory'
+            credentials(PasswordCredentials)
+        }
+    }
 }
+
+//project.afterEvaluate {
+//    publishing {
+//        publications {
+//            release(MavenPublication) {
+//                from components.release
+//            }
+//        }
+//    }
+//}
