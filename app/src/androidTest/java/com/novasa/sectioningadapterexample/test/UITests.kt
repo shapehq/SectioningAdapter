@@ -6,6 +6,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.ActivityTestRule
 import com.novasa.sectioningadapterexample.app.ExampleActivityKotlin
 import com.novasa.sectioningadapterexample.app.TestApplication
+import com.novasa.sectioningadapterexample.data.Data
 import com.novasa.sectioningadapterexample.data.DataSource
 import com.novasa.sectioningadapterexample.data.Item
 import io.mockk.every
@@ -30,7 +31,7 @@ class UITests {
         }
     }
 
-    private val publisher = PublishSubject.create<List<Item>>()
+    private val publisher = PublishSubject.create<Data>()
 
     @Inject
     lateinit var dataSource: DataSource
@@ -47,6 +48,6 @@ class UITests {
             Item(2, 2)
         )
 
-        publisher.onNext(items)
+        publisher.onNext(Data(items = items))
     }
 }

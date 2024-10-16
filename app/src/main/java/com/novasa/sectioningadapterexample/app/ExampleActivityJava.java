@@ -88,7 +88,7 @@ public class ExampleActivityJava extends AppCompatActivity {
         @Override
         public BaseViewHolder onCreateViewHolder(@NotNull Context context, @NotNull ViewGroup parent, int viewType) {
             final LayoutInflater inflater = LayoutInflater.from(context);
-            return new ItemViewHolder(inflater.inflate(R.layout.cell_item, parent, false));
+            return new ItemViewHolder(inflater.inflate(R.layout.cell_item_1, parent, false));
         }
 
         @Override
